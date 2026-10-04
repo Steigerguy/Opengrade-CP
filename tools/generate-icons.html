@@ -2,16 +2,40 @@
 <html>
 <head><title>Generate Icons</title></head>
 <body>
+<!-- Icons are already generated in public/. Only needed if you change the design.
+     Save each download into public/. -->
 <canvas id="c192" width="192" height="192" style="border:1px solid #ccc;margin:10px"></canvas>
 <canvas id="c512" width="512" height="512" style="border:1px solid #ccc;margin:10px"></canvas>
+<canvas id="cmask" width="512" height="512" style="border:1px solid #ccc;margin:10px"></canvas>
+<canvas id="c180" width="180" height="180" style="border:1px solid #ccc;margin:10px"></canvas>
 <br>
 <button onclick="download('c192','icon-192.png')">Download icon-192.png</button>
 <button onclick="download('c512','icon-512.png')">Download icon-512.png</button>
+<button onclick="download('cmask','icon-maskable-512.png')">Download icon-maskable-512.png</button>
+<button onclick="download('c180','icon-180.png')">Download icon-180.png</button>
 <script>
-function drawIcon(canvas) {
-  var s = canvas.width;
+// opts.square: fill the whole canvas (iOS and Android apply their own corner mask)
+// opts.scale:  shrink the artwork so it fits Android's maskable safe zone (inner 80% circle)
+function drawIcon(canvas, opts) {
+  opts = opts || {};
+  var full = canvas.width;
   var ctx = canvas.getContext('2d');
-  var r = s * 0.16;
+  if (opts.square) {
+    ctx.fillStyle = '#3d2b0f'; ctx.fillRect(0, 0, full, full);
+    // soil band runs edge to edge so the mask never shows a seam
+    ctx.fillStyle = '#1a1208';
+    var k = opts.scale || 1, off = full * (1 - k) / 2;
+    ctx.fillRect(0, off + full * k * 0.76, full, full);
+    ctx.fillStyle = '#2a1f0e';
+    ctx.fillRect(0, off + full * k * 0.73, full, full * k * 0.05);
+  }
+  if (opts.scale) {
+    ctx.save();
+    ctx.translate(full * (1 - opts.scale) / 2, full * (1 - opts.scale) / 2);
+    ctx.scale(opts.scale, opts.scale);
+  }
+  var s = full;
+  var r = opts.square ? 0 : s * 0.16;
 
   // Background rounded rect
   ctx.beginPath();
@@ -21,6 +45,7 @@ function drawIcon(canvas) {
   ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
   ctx.closePath();
   ctx.fillStyle = '#3d2b0f'; ctx.fill();
+  if (!opts.square) ctx.clip();   // keep the soil band inside the rounded corners
 
   // Soil
   ctx.fillStyle = '#1a1208';
@@ -56,10 +81,13 @@ function drawIcon(canvas) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.letterSpacing = s*0.02 + 'px';
   ctx.fillText('FR', s*0.5, s*0.885);
+  if (opts.scale) ctx.restore();
 }
 
 drawIcon(document.getElementById('c192'));
 drawIcon(document.getElementById('c512'));
+drawIcon(document.getElementById('cmask'), {square: true, scale: 0.8});
+drawIcon(document.getElementById('c180'), {square: true});
 
 function download(id, name) {
   var a = document.createElement('a');

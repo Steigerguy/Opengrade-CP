@@ -10,7 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Field Records">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <style>
 
@@ -55,6 +56,9 @@
     background: var(--earth);
     border-bottom: 3px solid var(--wheat);
     padding: 18px 32px;
+    padding-top: calc(18px + env(safe-area-inset-top));
+    padding-left: calc(32px + env(safe-area-inset-left));
+    padding-right: calc(32px + env(safe-area-inset-right));
     display: flex;
     align-items: center;
     gap: 20px;
@@ -110,7 +114,7 @@
   .nav-tab:hover { color: var(--wheat-light); }
   .nav-tab.active { color: var(--wheat); border-bottom-color: var(--wheat); }
 
-  .main { padding: 28px 32px; max-width: 1100px; margin: 0 auto; }
+  .main { padding: 28px 32px calc(28px + env(safe-area-inset-bottom)); max-width: 1100px; margin: 0 auto; }
 
   .section { display: none; }
   .section.active { display: block; }
@@ -353,6 +357,10 @@
   .btn-cancel:hover { border-color: var(--wheat); color: var(--wheat); }
 
   /* Summary Cards */
+  .field-breakdown { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .crop-grid { display: grid; grid-template-columns: 1fr 160px 90px auto; gap: 10px; }
+  .crop-add  { display: grid; grid-template-columns: 1fr 160px auto; gap: 10px; align-items: end; }
+
   .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
 
   .stat-card {
@@ -455,12 +463,22 @@
   }
 
   @media (max-width: 600px) {
-    .main { padding: 16px; }
-    header { padding: 14px 16px; }
+    .main { padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
+    header { padding: calc(14px + env(safe-area-inset-top)) 16px 14px; }
     .nav-tabs { padding: 0 16px; }
     .form-row { grid-template-columns: 1fr; }
     .dynamic-item, .dynamic-item.three-col { grid-template-columns: 1fr auto; }
     .dynamic-item.three-col input:nth-child(3) { grid-column: 1; }
+    .field-breakdown { grid-template-columns: 1fr; }
+    .crop-grid { grid-template-columns: 1fr 110px auto; }
+    .crop-grid > :nth-child(3) { display: none; }   /* lbs/bu hint column */
+    .crop-add  { grid-template-columns: 1fr 1fr; }
+    .crop-add > .btn { grid-column: 1 / -1; }
+    .summary-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-card { min-width: 0; padding: 14px 8px; }
+    .stat-num { font-size: 1.6rem; overflow-wrap: anywhere; }
+    /* iOS Safari zooms the page when focusing any input under 16px */
+    input, select, textarea { font-size: 16px !important; }
   }
 
   /* Auth screen */
@@ -523,18 +541,21 @@
     <div class="auth-subtitle">Sign in to sync your data</div>
     <div class="form-group">
       <label>Email</label>
-      <input type="email" id="auth-email" placeholder="you@example.com"
+      <input type="email" id="auth-email" placeholder="you@example.com" autocomplete="username"
         onkeydown="if(event.key==='Enter') document.getElementById('auth-pass').focus()">
     </div>
     <div class="form-group">
       <label>Password</label>
-      <input type="password" id="auth-pass" placeholder="Password"
+      <input type="password" id="auth-pass" placeholder="Password" autocomplete="current-password"
         onkeydown="if(event.key==='Enter') doLogin()">
     </div>
     <div id="auth-error" class="auth-error"></div>
     <div style="display:flex;gap:10px;margin-top:4px">
       <button class="btn" style="flex:1" onclick="doLogin()">Sign In</button>
       <button class="btn-cancel" style="flex:1;border-radius:4px;padding:10px;cursor:pointer" onclick="doRegister()">Create Account</button>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <a href="#" onclick="doResetPassword();return false" style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:rgba(245,237,216,0.5)">Forgot password?</a>
     </div>
   </div>
 </div>
@@ -557,11 +578,11 @@
 </header>
 
 <nav class="nav-tabs">
-  <div class="nav-tab active" onclick="showSection('inputs')">▸ Field Inputs</div>
-  <div class="nav-tab" onclick="showSection('harvest')">▸ Harvest</div>
-  <div class="nav-tab" onclick="showSection('summary')">▸ Summary</div>
-  <div class="nav-tab" onclick="showSection('expenses')">$ Expenses</div>
-  <div class="nav-tab" onclick="showSection('settings')">⚙ Settings</div>
+  <div class="nav-tab active" data-section="inputs" onclick="showSection('inputs', this)">▸ Field Inputs</div>
+  <div class="nav-tab" data-section="harvest" onclick="showSection('harvest', this)">▸ Harvest</div>
+  <div class="nav-tab" data-section="summary" onclick="showSection('summary', this)">▸ Summary</div>
+  <div class="nav-tab" data-section="expenses" onclick="showSection('expenses', this)">$ Expenses</div>
+  <div class="nav-tab" data-section="settings" onclick="showSection('settings', this)">⚙ Settings</div>
 </nav>
 
 <div class="main">
@@ -623,7 +644,7 @@
         Standard values are pre-loaded — adjust if your elevator uses different weights.
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 160px 90px auto;gap:10px;margin-bottom:8px;padding:0 2px">
+      <div class="crop-grid crop-hdr" style="margin-bottom:8px;padding:0 2px">
         <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(245,237,216,0.35)">Crop</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(245,237,216,0.35)">Bu / Tonne</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(245,237,216,0.35);text-align:center">Test Wt</span>
@@ -633,7 +654,7 @@
 
       <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--wheat-light);margin-bottom:10px">Add New Crop</div>
-        <div style="display:grid;grid-template-columns:1fr 160px auto;gap:10px;align-items:end">
+        <div class="crop-add">
           <div class="form-group" style="margin:0">
             <label>Crop Name</label>
             <input type="text" id="new-crop-name" placeholder="e.g. Flax, Lentils">
@@ -699,13 +720,16 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Litres / Gallons</label>
-          <input type="number" id="exp-fuel-qty" placeholder="e.g. 500" min="0" step="0.1" oninput="calcExpenseTotal()">
+          <label>Quantity</label>
+          <div style="display:flex;gap:6px">
+            <input type="number" id="exp-fuel-qty" placeholder="e.g. 500" min="0" step="0.1" oninput="calcExpenseTotal()">
+            <select id="exp-fuel-unit" style="width:auto"><option value="L">L</option><option value="gal">gal</option></select>
+          </div>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Price per Litre/Gallon ($)</label>
+          <label>Price per Unit ($)</label>
           <input type="number" id="exp-fuel-price" placeholder="e.g. 1.45" min="0" step="0.001" oninput="calcExpenseTotal()">
         </div>
         <div class="form-group">
@@ -723,8 +747,11 @@
           <select id="exp-checkoff-crop"></select>
         </div>
         <div class="form-group">
-          <label>Bushels / Tonnes</label>
-          <input type="number" id="exp-checkoff-qty" placeholder="e.g. 1000" min="0" step="0.1">
+          <label>Quantity</label>
+          <div style="display:flex;gap:6px">
+            <input type="number" id="exp-checkoff-qty" placeholder="e.g. 1000" min="0" step="0.1" oninput="calcCheckoffTotal()">
+            <select id="exp-checkoff-unit" style="width:auto"><option value="bu">bu</option><option value="t">t</option></select>
+          </div>
         </div>
       </div>
       <div class="form-row">
@@ -954,9 +981,12 @@ const DEFAULT_CROPS = [
 
 let currentUser = null;
 let idToken = null;
+let tokenExpiry = 0;      // ms timestamp when idToken expires
 let allData = null;
+let loaded = false;       // true once real data (server or local copy) is in allData
 let currentSeason = new Date().getFullYear().toString();
 let saveTimeout = null;
+let refreshPromise = null;
 
 // Firebase REST endpoints
 var DB_URL  = FIREBASE_CONFIG.databaseURL;
@@ -973,39 +1003,54 @@ var data = {
 };
 
 // ===================== AUTH (REST) =====================
-function initFirebase() {
-  // Check for saved session
-  var saved = localStorage.getItem('fr_session');
-  if (saved) {
-    try {
-      var sess = JSON.parse(saved);
-      currentUser = sess.user;
-      idToken     = sess.idToken;
-      showApp(currentUser);
-      loadData();
-      // Refresh token in background
-      refreshToken(sess.refreshToken);
-    } catch(e) { showAuthScreen(); }
-  } else {
-    showAuthScreen();
-  }
+function readSession() {
+  try { return JSON.parse(localStorage.getItem('fr_session') || 'null'); } catch(e) { return null; }
+}
+function writeSession(s) {
+  try { localStorage.setItem('fr_session', JSON.stringify(s)); } catch(e) {}
 }
 
-function refreshToken(refreshToken) {
-  fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+function initFirebase() {
+  var sess = readSession();
+  if (!sess || !sess.user || !sess.refreshToken) { showAuthScreen(); return; }
+  currentUser = sess.user;
+  idToken     = sess.idToken;
+  tokenExpiry = sess.tokenExpiry || 0;   // unknown expiry → refresh before first request
+  showApp(currentUser);
+  loadData();
+}
+
+// Resolves once idToken is valid for at least 5 more minutes.
+// Rejects with err.auth = true if the session is no longer valid (must sign in again).
+function ensureToken() {
+  if (idToken && Date.now() < tokenExpiry - 5 * 60 * 1000) return Promise.resolve();
+  var sess = readSession();
+  if (!sess || !sess.refreshToken) { var e = new Error('No session'); e.auth = true; return Promise.reject(e); }
+  return refreshToken(sess.refreshToken);
+}
+
+function refreshToken(rt) {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({grant_type:'refresh_token', refresh_token: refreshToken})
+    body: JSON.stringify({grant_type:'refresh_token', refresh_token: rt})
   }).then(function(r){ return r.json(); }).then(function(d) {
-    if (d.id_token) {
-      idToken = d.id_token;
-      var saved = JSON.parse(localStorage.getItem('fr_session') || '{}');
-      saved.idToken = d.id_token;
-      saved.refreshToken = d.refresh_token;
-      localStorage.setItem('fr_session', JSON.stringify(saved));
+    if (!d.id_token) {
+      var e = new Error((d.error && d.error.message) || 'Token refresh failed'); e.auth = true; throw e;
     }
-  }).catch(function(){});
+    idToken     = d.id_token;
+    tokenExpiry = Date.now() + (parseInt(d.expires_in, 10) || 3600) * 1000;
+    var sess = readSession() || {};
+    sess.idToken = d.id_token;
+    sess.refreshToken = d.refresh_token;
+    sess.tokenExpiry = tokenExpiry;
+    writeSession(sess);
+  });
+  refreshPromise.then(clearRefresh, clearRefresh);
+  return refreshPromise;
 }
+function clearRefresh() { refreshPromise = null; }
 
 function showAuthScreen() {
   document.getElementById('auth-screen').style.display = 'flex';
@@ -1018,24 +1063,34 @@ function showApp(user) {
   document.getElementById('app-screen').style.display  = 'block';
 }
 
-function authRequest(endpoint, email, pass, errEl) {
-  errEl.textContent = endpoint === 'signInWithPassword' ? 'Signing in...' : 'Creating account...';
+function authRequest(endpoint, body, errEl, busyText, onOk) {
+  errEl.textContent = busyText;
   fetch(AUTH_URL + ':' + endpoint + '?key=' + API_KEY, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({email: email, password: pass, returnSecureToken: true})
+    body: JSON.stringify(body)
   })
   .then(function(r){ return r.json(); })
   .then(function(d) {
     if (d.error) { errEl.textContent = d.error.message.replace(/_/g,' ').toLowerCase(); return; }
-    idToken     = d.idToken;
-    currentUser = {uid: d.localId, email: d.email};
-    localStorage.setItem('fr_session', JSON.stringify({user: currentUser, idToken: d.idToken, refreshToken: d.refreshToken}));
-    errEl.textContent = '';
-    showApp(currentUser);
-    loadData();
+    onOk(d);
   })
   .catch(function(e){ errEl.textContent = 'Network error. Check connection.'; });
+}
+
+function signIn(endpoint, email, pass, errEl) {
+  authRequest(endpoint, {email: email, password: pass, returnSecureToken: true}, errEl,
+    endpoint === 'signInWithPassword' ? 'Signing in...' : 'Creating account...',
+    function(d) {
+      idToken     = d.idToken;
+      tokenExpiry = Date.now() + (parseInt(d.expiresIn, 10) || 3600) * 1000;
+      currentUser = {uid: d.localId, email: d.email};
+      writeSession({user: currentUser, idToken: d.idToken, refreshToken: d.refreshToken, tokenExpiry: tokenExpiry});
+      errEl.textContent = '';
+      document.getElementById('auth-pass').value = '';
+      showApp(currentUser);
+      loadData();
+    });
 }
 
 function doLogin() {
@@ -1043,7 +1098,7 @@ function doLogin() {
   var pass  = document.getElementById('auth-pass').value;
   var err   = document.getElementById('auth-error');
   if (!email || !pass) { err.textContent = 'Enter email and password.'; return; }
-  authRequest('signInWithPassword', email, pass, err);
+  signIn('signInWithPassword', email, pass, err);
 }
 
 function doRegister() {
@@ -1051,13 +1106,40 @@ function doRegister() {
   var pass  = document.getElementById('auth-pass').value;
   var err   = document.getElementById('auth-error');
   if (!email || !pass) { err.textContent = 'Enter email and password.'; return; }
-  authRequest('signUp', email, pass, err);
+  signIn('signUp', email, pass, err);
+}
+
+function doResetPassword() {
+  var email = document.getElementById('auth-email').value.trim();
+  var err   = document.getElementById('auth-error');
+  if (!email) { err.textContent = 'Enter your email above first.'; return; }
+  authRequest('sendOobCode', {requestType: 'PASSWORD_RESET', email: email}, err, 'Sending reset email...',
+    function() { err.textContent = 'Reset email sent — check your inbox.'; });
 }
 
 function doLogout() {
+  var local = readLocal();
+  if (local && local.dirty && !confirm('Some changes have not synced yet and will be lost if you sign out. Sign out anyway?')) return;
+  clearTimeout(saveTimeout);
+  if (currentUser) { try { localStorage.removeItem(localKey()); } catch(e) {} }
   localStorage.removeItem('fr_session');
-  currentUser = null; idToken = null; allData = null;
+  currentUser = null; idToken = null; tokenExpiry = 0; allData = null; loaded = false;
+  setIndicator('');
   showAuthScreen();
+}
+
+// ===================== LOCAL COPY (offline) =====================
+// The last known data is kept on the device so the app works without signal.
+// dirty = true means it has edits the server hasn't received yet.
+function localKey() { return 'fr_data_' + currentUser.uid; }
+
+function readLocal() {
+  if (!currentUser) return null;
+  try { return JSON.parse(localStorage.getItem(localKey()) || 'null'); } catch(e) { return null; }
+}
+
+function writeLocal(dirty) {
+  try { localStorage.setItem(localKey(), JSON.stringify({dirty: dirty, data: allData})); } catch(e) {}
 }
 
 // ===================== FIREBASE DATA (REST) =====================
@@ -1065,77 +1147,165 @@ function dbPath() {
   return DB_URL + '/users/' + currentUser.uid + '/fieldRecords.json?auth=' + idToken;
 }
 
+function freshData() {
+  var yr = new Date().getFullYear().toString();
+  var d = {
+    currentSeason: yr,
+    crops: DEFAULT_CROPS.map(function(c){ return Object.assign({},c); }),
+    seasons: {}
+  };
+  d.seasons[yr] = { inputs: [], harvests: [], expenses: [] };
+  return d;
+}
+
+function applyData(val) {
+  allData = val;
+  allData.seasons = allData.seasons || {};
+  if (!Object.keys(allData.seasons).length) allData.seasons[new Date().getFullYear().toString()] = {};
+  Object.keys(allData.seasons).forEach(function(s) {
+    allData.seasons[s].inputs   = allData.seasons[s].inputs   || [];
+    allData.seasons[s].inputs.forEach(repairChemRows);
+    allData.seasons[s].harvests = allData.seasons[s].harvests || [];
+    allData.seasons[s].expenses = allData.seasons[s].expenses || [];
+  });
+
+  var cropsValid = allData.crops && allData.crops.length > 0
+    && allData.crops.every(function(c){ return c && typeof c.name === 'string' && c.name.length > 0 && c.buPerTonne > 0; });
+  if (!cropsValid) {
+    allData.crops = DEFAULT_CROPS.map(function(c){ return Object.assign({},c); });
+  }
+
+  currentSeason = allData.seasons[allData.currentSeason] ? allData.currentSeason : Object.keys(allData.seasons)[0];
+  loaded = true;
+  renderAll();
+}
+
+// Older versions saved chemical rows shifted by one field: the per-acre qty landed in
+// unitCost and the $/unit landed in cost. Records saved since the fix carry chemV2.
+function repairChemRows(rec) {
+  if (!rec || rec.chemV2) return;
+  rec.chemV2 = true;
+  var fixed = false;
+  (rec.chem || []).forEach(function(c) {
+    if (!c) return;
+    var perAc = c.unitCost, unitCost = c.cost;
+    var qty = parseFloat(c.qty) || 0, uc = parseFloat(unitCost) || 0;
+    c.qtyPerAc = perAc || '';
+    c.unitCost = unitCost || '';
+    c.cost     = (qty && uc) ? (qty * uc).toFixed(2) : '';
+    fixed = true;
+  });
+  if (fixed) {
+    rec.totalCost = (rec.seed || []).concat(rec.fert || [], rec.chem || [])
+      .reduce(function(a, r){ return a + (parseFloat(r.cost) || 0); }, 0);
+  }
+}
+
+function renderAll() {
+  renderSeasonSelect();
+  renderInputs();
+  renderHarvests();
+  renderExpenses();
+  renderSettings();
+  var active = document.querySelector('.section.active');
+  if (active && active.id === 'section-summary') renderSummary();
+}
+
 function loadData() {
-  fetch(dbPath())
-  .then(function(r){ return r.json(); })
-  .then(function(val) {
-    if (val && !val.error) {
-      allData = val;
-      Object.keys(allData.seasons || {}).forEach(function(s) {
-        allData.seasons[s].inputs   = allData.seasons[s].inputs   || [];
-        allData.seasons[s].harvests = allData.seasons[s].harvests || [];
-      });
-    } else {
-      var yr = new Date().getFullYear().toString();
-      allData = {
-        currentSeason: yr,
-        crops: DEFAULT_CROPS.map(function(c){ return Object.assign({},c); }),
-        seasons: {}
-      };
-      allData.seasons[yr] = { inputs: [], harvests: [] };
-    }
+  var local = readLocal();
+  // Unsynced edits from last time win: show them and push them up.
+  if (local && local.dirty && local.data) {
+    applyData(local.data);
+    pushSave();
+    return;
+  }
+  if (local && local.data && !loaded) applyData(local.data);   // show cached copy instantly
 
-    var cropsValid = allData.crops && allData.crops.length > 0
-      && allData.crops.every(function(c){ return c && typeof c.name === 'string' && c.name.length > 0 && c.buPerTonne > 0; });
-    if (!cropsValid) {
-      allData.crops = DEFAULT_CROPS.map(function(c){ return Object.assign({},c); });
-    }
-
-    currentSeason = allData.currentSeason || Object.keys(allData.seasons)[0];
-    renderSeasonSelect();
-    renderInputs();
-    renderHarvests();
-    renderExpenses();
-    renderSettings();
-    var active = document.querySelector('.section.active');
-    if (active && active.id === 'section-summary') renderSummary();
-    if (active && active.id === 'section-expenses') renderExpenses();
+  setIndicator('↻ Loading...');
+  ensureToken()
+  .then(function() { return fetch(dbPath()); })
+  .then(function(r) {
+    return r.json().then(function(val) {
+      if (!r.ok) { var e = new Error((val && val.error) || ('HTTP ' + r.status)); e.status = r.status; throw e; }
+      return val;
+    });
   })
-  .catch(function(e){ console.error('Load error:', e); });
+  .then(function(val) {
+    // Edited the cached copy while this was loading — keep those edits.
+    var now = readLocal();
+    if (now && now.dirty) { pushSave(); return; }
+    // null = brand-new user with nothing saved yet. Anything else is real data.
+    applyData(val || freshData());
+    writeLocal(false);
+    setIndicator('✓ Synced', true);
+  })
+  .catch(function(e) {
+    console.error('Load error:', e);
+    if (e.auth) { alert('Your session has expired. Please sign in again.'); doLogout(); return; }
+    // Never fall back to empty data here — that is how records get overwritten.
+    setIndicator(loaded ? '⚠ Offline — showing saved copy' : '⚠ Could not load — will retry when online');
+  });
 }
 
 function save() {
+  if (currentUser && !loaded) {
+    alert("Your records haven't loaded yet, so this change can't be saved. Check your connection and try again.");
+    syncIfNeeded();
+    return;
+  }
   if (!currentUser || !allData) return;
   allData.currentSeason = currentSeason;
+  writeLocal(true);
+  setIndicator('↑ Saving...');
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(function() {
-    fetch(dbPath(), {
-      method: 'PUT',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(allData)
-    })
-    .then(function(r){
-      if (!r.ok) {
-        // Token may have expired — try refreshing
-        var saved = JSON.parse(localStorage.getItem('fr_session') || '{}');
-        if (saved.refreshToken) refreshToken(saved.refreshToken);
-      }
-    })
-    .catch(function(e){ console.error('Save error:', e); });
-  }, 800);
-  showSaveIndicator();
+  saveTimeout = setTimeout(pushSave, 800);
 }
 
-function showSaveIndicator() {
+function pushSave(retried) {
+  if (!currentUser || !allData || !loaded) return;
+  var body = JSON.stringify(allData);
+  ensureToken()
+  .then(function() {
+    return fetch(dbPath(), { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: body });
+  })
+  .then(function(r) {
+    if ((r.status === 401 || r.status === 403) && !retried) {
+      tokenExpiry = 0;   // force a refresh, then try once more
+      return pushSave(true);
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    // Only mark clean if nothing changed while the request was in flight
+    if (JSON.stringify(allData) === body) {
+      writeLocal(false);
+      setIndicator('✓ Synced', true);
+    }
+  })
+  .catch(function(e) {
+    console.error('Save error:', e);
+    if (e.auth) { setIndicator('⚠ Signed out — changes kept on this device'); return; }
+    setIndicator(navigator.onLine ? '⚠ Save failed — will retry' : '⚠ Offline — saved on this device');
+  });
+}
+
+function syncIfNeeded() {
+  if (!currentUser) return;
+  if (!loaded) { loadData(); return; }
+  var local = readLocal();
+  if (local && local.dirty) pushSave();
+}
+window.addEventListener('online', syncIfNeeded);
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') syncIfNeeded();
+});
+
+function setIndicator(text, autoHide) {
   var el = document.getElementById('save-indicator');
   if (!el) return;
-  el.textContent = '↑ Saving...';
-  el.style.opacity = '1';
   clearTimeout(el._hideTimer);
-  el._hideTimer = setTimeout(function(){
-    el.textContent = '✓ Synced';
-    setTimeout(function(){ el.style.opacity = '0'; }, 1500);
-  }, 1000);
+  el.textContent = text;
+  el.style.color = text.charAt(0) === '⚠' ? '#e8a8a3' : '';
+  el.style.opacity = text ? '1' : '0';
+  if (autoHide) el._hideTimer = setTimeout(function(){ el.style.opacity = '0'; }, 2000);
 }
 
 // ===================== SEASONS =====================
@@ -1143,35 +1313,35 @@ function switchSeason(s) {
   currentSeason = s;
   allData.currentSeason = s;
   save();
-  renderSeasonSelect();
-  renderInputs();
-  renderHarvests();
-  var active = (document.querySelector('.section.active') || {}).id;
-  if (active === 'section-summary') renderSummary();
-  if (active === 'section-settings') renderSettings();
+  renderAll();
 }
 
 function newSeason() {
   document.getElementById('newSeasonModal').classList.add('open');
   document.getElementById('new-season-name').value = '';
+  document.getElementById('new-season-error').textContent = '';
   setTimeout(function(){ document.getElementById('new-season-name').focus(); }, 100);
 }
 
 function saveNewSeason() {
   var name = document.getElementById('new-season-name').value.trim();
+  var errEl = document.getElementById('new-season-error');
   if (!name) return;
-  if (allData.seasons[name]) {
-    document.getElementById('new-season-error').textContent = 'Season already exists.';
+  // Firebase keys can't contain these — a season named "2024/25" would make every save fail
+  if (/[.#$\/\[\]]/.test(name)) {
+    errEl.textContent = "Season names can't contain . # $ / [ ] — try 2024-25.";
     return;
   }
-  allData.seasons[name] = { inputs: [], harvests: [] };
+  if (allData.seasons[name]) {
+    errEl.textContent = 'Season already exists.';
+    return;
+  }
+  allData.seasons[name] = { inputs: [], harvests: [], expenses: [] };
   currentSeason = name;
   allData.currentSeason = name;
   save();
   document.getElementById('newSeasonModal').classList.remove('open');
-  renderSeasonSelect();
-  renderInputs();
-  renderHarvests();
+  renderAll();
 }
 
 function closeNewSeasonModal() {
@@ -1186,10 +1356,7 @@ function deleteSeason(name) {
   if (currentSeason === name) currentSeason = Object.keys(allData.seasons)[0];
   allData.currentSeason = currentSeason;
   save();
-  renderSeasonSelect();
-  renderSettings();
-  renderInputs();
-  renderHarvests();
+  renderAll();
 }
 
 function renderSeasonSelect() {
@@ -1197,16 +1364,16 @@ function renderSeasonSelect() {
   if (!sel || !allData) return;
   var seasons = Object.keys(allData.seasons).sort().reverse();
   sel.innerHTML = seasons.map(function(s) {
-    return '<option value="' + s + '"' + (s === currentSeason ? ' selected' : '') + '>' + s + '</option>';
+    return '<option value="' + esc(s) + '"' + (s === currentSeason ? ' selected' : '') + '>' + esc(s) + '</option>';
   }).join('');
 }
 
 // ===================== NAVIGATION =====================
-function showSection(name) {
+function showSection(name, tab) {
   document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
   document.querySelectorAll('.nav-tab').forEach(function(t){ t.classList.remove('active'); });
   document.getElementById('section-' + name).classList.add('active');
-  event.target.classList.add('active');
+  (tab || document.querySelector('.nav-tab[data-section="' + name + '"]')).classList.add('active');
   if (name === 'summary')  renderSummary();
   if (name === 'expenses') renderExpenses();
   if (name === 'settings') renderSettings();
@@ -1433,7 +1600,10 @@ function addSaleRow(date, qty, price, buyer, unit) {
   });
   row2.appendChild(qtyIn); row2.appendChild(priceIn);
 
-  div.appendChild(row1); div.appendChild(row2);
+  var buyerIn = document.createElement('input');
+  buyerIn.type = 'text'; buyerIn.placeholder = 'Buyer / location'; buyerIn.value = buyer; buyerIn.style.cssText = s;
+
+  div.appendChild(row1); div.appendChild(row2); div.appendChild(buyerIn);
   document.getElementById('sale-list').appendChild(div);
 }
 
@@ -1445,14 +1615,16 @@ function updateSalePlaceholder(sel, qtyIn, priceIn) {
   }
 }
 
-function getRows(containerId, fields) {
+// fields must match the DOM order of the row's inputs/selects.
+// A row is kept only if one of keyFields has a value (unit dropdowns always do).
+function getRows(containerId, fields, keyFields) {
   var rows = [];
   var container = document.getElementById(containerId);
   Array.from(container.children).forEach(function(child) {
     var inputs = child.querySelectorAll('input, select');
     var row = {};
     fields.forEach(function(f, i){ row[f] = (inputs[i] && inputs[i].value) || ''; });
-    if (Object.values(row).some(function(v){ return v; })) rows.push(row);
+    if ((keyFields || fields).some(function(f){ return row[f]; })) rows.push(row);
   });
   return rows;
 }
@@ -1466,8 +1638,14 @@ function getBuPerTonne(cropName) {
 function getCropOptions(selected) {
   selected = selected || '';
   return (allData ? allData.crops || [] : []).map(function(c){
-    return '<option value="' + c.name + '"' + (c.name===selected?' selected':'') + '>' + c.name + '</option>';
+    return '<option value="' + esc(c.name) + '"' + (c.name===selected?' selected':'') + '>' + esc(c.name) + '</option>';
   }).join('');
+}
+
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(ch) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+  });
 }
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
@@ -1504,22 +1682,23 @@ function openInputModal(id) {
 
 var editingInputId   = null;
 var editingHarvestId = null;
+var editingExpenseId = null;
 
 function closeInputModal() { document.getElementById('inputModal').classList.remove('open'); }
 
 function saveInputRecord() {
   var field = document.getElementById('i-field').value.trim();
   if (!field) { alert('Please enter a field name.'); return; }
-  var seed = getRows('seed-list', ['name','qty','seedUnit','qtyPerAc','unitCost','cost']);
-  var fert = getRows('fert-list', ['type','amount','fertUnit','amountPerAc','unitCost','cost']);
-  var chem = getRows('chem-list', ['name','qty','chemUnit','unitCost','cost']);
+  var seed = getRows('seed-list', ['name','qty','seedUnit','qtyPerAc','unitCost','cost'], ['name','qty','unitCost','cost']);
+  var fert = getRows('fert-list', ['type','amount','fertUnit','amountPerAc','unitCost','cost'], ['amount','amountPerAc','unitCost','cost']);
+  var chem = getRows('chem-list', ['name','qty','chemUnit','qtyPerAc','unitCost','cost'], ['name','qty','unitCost','cost']);
   var totalCost = seed.concat(fert).concat(chem).reduce(function(a,r){ return a + (parseFloat(r.cost)||0); }, 0);
   var rec = {
     id: editingInputId || uid(), field: field,
     date:  document.getElementById('i-date').value,
     acres: parseFloat(document.getElementById('i-acres').value) || 0,
     notes: document.getElementById('i-notes').value,
-    seed: seed, fert: fert, chem: chem, totalCost: totalCost
+    seed: seed, fert: fert, chem: chem, totalCost: totalCost, chemV2: true
   };
   var inputs = data.inputs.slice();
   if (editingInputId) {
@@ -1572,7 +1751,7 @@ function saveHarvestRecord() {
   var bushels    = parseFloat(document.getElementById('h-bushels').value) || 0;
   var crop       = document.getElementById('h-crop').value;
   var buPerTonne = getBuPerTonne(crop);
-  var rawSales   = getRows('sale-list', ['date','unit','qty','price','buyer']);
+  var rawSales   = getRows('sale-list', ['date','unit','qty','price','buyer'], ['qty']);
   var sales = rawSales.map(function(s) {
     var unit  = s.unit || 'bu'; var qty = parseFloat(s.qty) || 0; var price = parseFloat(s.price) || 0;
     return { date: s.date, unit: unit, qty: qty, price: price, buyer: s.buyer||'', bushels: unit==='t' ? qty*buPerTonne : qty };
@@ -1617,10 +1796,6 @@ function openSellModal(harvestId) {
   } else { cl.style.display = 'none'; }
   updateSellUnit();
   document.getElementById('sellModal').classList.add('open');
-  ['sell-qty','sell-price','sell-unit'].forEach(function(id){
-    document.getElementById(id).addEventListener('input', showSellEquiv);
-    document.getElementById(id).addEventListener('change', showSellEquiv);
-  });
 }
 
 function updateSellUnit() {
@@ -1682,17 +1857,17 @@ function renderInputs() {
   }
   list.innerHTML = data.inputs.slice().reverse().map(function(rec) {
     var seedChips = (rec.seed||[]).filter(function(s){ return s.name; }).map(function(s){
-      return '<span class="chip seed">🌱 ' + s.name + (s.qty?' — '+s.qty+' '+(s.seedUnit||'bags'):'') + (s.cost?' ('+fmt$(s.cost)+')':'') + '</span>';
+      return '<span class="chip seed">🌱 ' + esc(s.name) + (s.qty?' — '+esc(s.qty)+' '+esc(s.seedUnit||'bags'):'') + (s.cost?' ('+fmt$(s.cost)+')':'') + '</span>';
     }).join('');
     var fertChips = (rec.fert||[]).filter(function(f){ return f.type; }).map(function(f){
-      return '<span class="chip fert">🧪 ' + f.type + (f.amount?' — '+f.amount+' '+(f.fertUnit||'lb'):'') + (f.cost?' ('+fmt$(f.cost)+')':'') + '</span>';
+      return '<span class="chip fert">🧪 ' + esc(f.type) + (f.amount?' — '+esc(f.amount)+' '+esc(f.fertUnit||'lb'):'') + (f.cost?' ('+fmt$(f.cost)+')':'') + '</span>';
     }).join('');
     var chemChips = (rec.chem||[]).filter(function(c){ return c.name; }).map(function(c){
-      return '<span class="chip chem">⚗️ ' + c.name + (c.qty?' — '+c.qty+' '+(c.chemUnit||'jug'):'') + (c.cost?' ('+fmt$(c.cost)+')':'') + '</span>';
+      return '<span class="chip chem">⚗️ ' + esc(c.name) + (c.qty?' — '+esc(c.qty)+' '+esc(c.chemUnit||'jug'):'') + (c.cost?' ('+fmt$(c.cost)+')':'') + '</span>';
     }).join('');
     return '<div class="card">'
       + '<div class="card-header">'
-      + '<div><div class="card-field">' + rec.field + (rec.acres?' — '+rec.acres+' ac':'') + '</div>'
+      + '<div><div class="card-field">' + esc(rec.field) + (rec.acres?' — '+rec.acres+' ac':'') + '</div>'
       + '<div class="card-date">' + (rec.date||'No date') + '</div></div>'
       + '<div class="card-actions">'
       + '<span class="chip cost" style="align-self:center">' + fmt$(rec.totalCost) + '</span>'
@@ -1702,7 +1877,7 @@ function renderInputs() {
       + '<div class="chip-row">'
       + (seedChips + fertChips + chemChips || '<span style="color:rgba(245,237,216,0.3);font-size:0.8rem">No inputs recorded</span>')
       + '</div>'
-      + (rec.notes ? '<div style="margin-top:10px;font-size:0.82rem;color:rgba(245,237,216,0.5)">' + rec.notes + '</div>' : '')
+      + (rec.notes ? '<div style="margin-top:10px;font-size:0.82rem;color:rgba(245,237,216,0.5)">' + esc(rec.notes) + '</div>' : '')
       + '</div>';
   }).join('');
 }
@@ -1724,7 +1899,7 @@ function renderHarvests() {
                              : (s.bushels||0).toLocaleString(undefined,{maximumFractionDigits:1}) + ' bu';
       var revenue  = isTonne ? (s.qty||0)*(s.price||0) : (s.bushels||0)*(s.price||0);
       return '<div class="sale-item">'
-        + '<div><span style="font-family:IBM Plex Mono,monospace;font-size:0.8rem;color:#f2d98a">' + (s.buyer||'Unknown buyer') + '</span>'
+        + '<div><span style="font-family:IBM Plex Mono,monospace;font-size:0.8rem;color:#f2d98a">' + esc(s.buyer||'Unknown buyer') + '</span>'
         + '<div style="font-size:0.75rem;color:rgba(245,237,216,0.4);margin-top:2px">' + (s.date||'') + '</div></div>'
         + '<div style="text-align:right">'
         + '<div style="font-family:IBM Plex Mono,monospace;font-size:0.85rem;color:#a8d4e8">' + dispQty + '</div>'
@@ -1734,7 +1909,7 @@ function renderHarvests() {
     var remaining = rec.remaining != null ? rec.remaining : rec.bushels;
     return '<div class="card">'
       + '<div class="card-header"><div>'
-      + '<div class="card-field">' + rec.field + (rec.crop?' — '+rec.crop:'') + '</div>'
+      + '<div class="card-field">' + esc(rec.field) + (rec.crop?' — '+esc(rec.crop):'') + '</div>'
       + '<div class="card-date">' + (rec.date||'No date') + '</div>'
       + '<div style="margin-top:6px">'
       + '<span class="remaining-badge">📦 ' + fmtBu(Math.max(0,remaining)) + ' remaining</span>'
@@ -1753,7 +1928,7 @@ function renderHarvests() {
       + '<button class="btn btn-sm" onclick="openHarvestModal(\'' + rec.id + '\')">Edit</button>'
       + '<button class="btn btn-sm btn-danger" onclick="deleteHarvest(\'' + rec.id + '\')">Delete</button>'
       + '</div>'
-      + (rec.notes ? '<div style="margin-top:10px;font-size:0.82rem;color:rgba(245,237,216,0.5)">' + rec.notes + '</div>' : '')
+      + (rec.notes ? '<div style="margin-top:10px;font-size:0.82rem;color:rgba(245,237,216,0.5)">' + esc(rec.notes) + '</div>' : '')
       + '</div>';
   }).join('');
 }
@@ -1766,11 +1941,13 @@ function renderSummary() {
   var totalSold      = data.harvests.reduce(function(a,r){ return a+(r.soldBu||0); }, 0);
   var totalRevenue   = data.harvests.reduce(function(a,r){ return a+(r.totalRevenue||0); }, 0);
   var totalAcres     = data.inputs.reduce(function(a,r){  return a+(r.acres||0); }, 0);
-  var net            = totalRevenue - totalInputCost;
+  var totalExpenses  = getExpenses().reduce(function(a,e){ return a+(e.total||0); }, 0);
+  var net            = totalRevenue - totalInputCost - totalExpenses;
 
   document.getElementById('summary-stats').innerHTML =
     '<div class="stat-card"><div class="stat-num">' + totalAcres.toLocaleString() + '</div><div class="stat-label">Acres</div></div>'
     + '<div class="stat-card"><div class="stat-num" style="color:#e8a8a3">' + fmt$(totalInputCost) + '</div><div class="stat-label">Input Cost</div></div>'
+    + '<div class="stat-card"><div class="stat-num" style="color:#e8a8a3">' + fmt$(totalExpenses) + '</div><div class="stat-label">Expenses</div></div>'
     + '<div class="stat-card"><div class="stat-num">' + totalBushels.toLocaleString() + '</div><div class="stat-label">Bu Harvested</div></div>'
     + '<div class="stat-card"><div class="stat-num" style="color:#a8d99e">' + fmt$(totalRevenue) + '</div><div class="stat-label">Revenue</div></div>'
     + '<div class="stat-card"><div class="stat-num" style="color:' + (net>=0?'#a8d99e':'#e8a8a3') + '">' + (net>=0?'+':'') + fmt$(net) + '</div><div class="stat-label">Net</div></div>'
@@ -1801,21 +1978,21 @@ function renderSummary() {
     var allSeed = []; inputs.forEach(function(r){ (r.seed||[]).forEach(function(s){ if(s.name) allSeed.push(s); }); });
     var seedRows = allSeed.length ? allSeed.map(function(s){
       return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(200,146,42,0.1)">'
-        + '<span style="color:rgba(245,237,216,0.7)">' + s.name + (s.qty?' — '+s.qty+' '+(s.seedUnit||'bags'):'') + '</span>'
+        + '<span style="color:rgba(245,237,216,0.7)">' + esc(s.name) + (s.qty?' — '+esc(s.qty)+' '+esc(s.seedUnit||'bags'):'') + '</span>'
         + '<span style="font-family:IBM Plex Mono,monospace;color:#a8d99e;font-size:0.8rem">' + (s.cost?fmt$(s.cost):'') + '</span></div>';
     }).join('') : '<div style="color:rgba(245,237,216,0.3);font-size:0.8rem">None</div>';
 
     var fertMap = {}; inputs.forEach(function(r){ (r.fert||[]).forEach(function(f){ if(f.type) fertMap[f.type]=(fertMap[f.type]||0)+(parseFloat(f.cost)||0); }); });
     var fertRows = Object.keys(fertMap).length ? Object.keys(fertMap).map(function(type){
       return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(125,184,212,0.1)">'
-        + '<span style="color:rgba(245,237,216,0.7)">' + type + '</span>'
+        + '<span style="color:rgba(245,237,216,0.7)">' + esc(type) + '</span>'
         + '<span style="font-family:IBM Plex Mono,monospace;color:#a8d4e8;font-size:0.8rem">' + fmt$(fertMap[type]) + '</span></div>';
     }).join('') : '<div style="color:rgba(245,237,216,0.3);font-size:0.8rem">None</div>';
 
     var chemMap = {}; inputs.forEach(function(r){ (r.chem||[]).forEach(function(c){ if(c.name) chemMap[c.name]=(chemMap[c.name]||0)+(parseFloat(c.cost)||0); }); });
     var chemRows = Object.keys(chemMap).length ? Object.keys(chemMap).map(function(name){
       return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(184,74,63,0.1)">'
-        + '<span style="color:rgba(245,237,216,0.7)">' + name + '</span>'
+        + '<span style="color:rgba(245,237,216,0.7)">' + esc(name) + '</span>'
         + '<span style="font-family:IBM Plex Mono,monospace;color:#e8a8a3;font-size:0.8rem">' + fmt$(chemMap[name]) + '</span></div>';
     }).join('') : '<div style="color:rgba(245,237,216,0.3);font-size:0.8rem">None</div>';
 
@@ -1825,13 +2002,13 @@ function renderSummary() {
         var dispQty = isTonne ? (s.qty||0).toLocaleString(undefined,{maximumFractionDigits:2})+' t' : (s.bushels||0).toLocaleString(undefined,{maximumFractionDigits:0})+' bu';
         var rev = isTonne ? (s.qty||0)*(s.price||0) : (s.bushels||0)*(s.price||0);
         return '<div style="display:flex;justify-content:space-between;padding:3px 0 3px 12px;font-size:0.78rem;color:rgba(245,237,216,0.5)">'
-          + '<span>' + (s.buyer||'Unknown') + (s.date?' · '+s.date:'') + ' · ' + dispQty + ' @ ' + (isTonne?fmt$(s.price||0)+'/t':fmt$(s.price||0)+'/bu') + '</span>'
+          + '<span>' + esc(s.buyer||'Unknown') + (s.date?' · '+s.date:'') + ' · ' + dispQty + ' @ ' + (isTonne?fmt$(s.price||0)+'/t':fmt$(s.price||0)+'/bu') + '</span>'
           + '<span style="color:#a8d99e;font-family:IBM Plex Mono,monospace">' + fmt$(rev) + '</span></div>';
       }).join('') : '<div style="padding:3px 0 3px 12px;font-size:0.78rem;color:rgba(245,237,216,0.3)">No sales recorded</div>';
       var hRem = h.remaining != null ? h.remaining : h.bushels;
       return '<div style="padding:6px 0;border-bottom:1px solid rgba(200,146,42,0.1)">'
         + '<div style="display:flex;justify-content:space-between">'
-        + '<span style="color:rgba(245,237,216,0.8)">' + (h.crop||'Unknown') + ' · ' + (h.bushels||0).toLocaleString() + ' bu' + (h.date?' · '+h.date:'') + '</span>'
+        + '<span style="color:rgba(245,237,216,0.8)">' + esc(h.crop||'Unknown') + ' · ' + (h.bushels||0).toLocaleString() + ' bu' + (h.date?' · '+h.date:'') + '</span>'
         + '<span class="remaining-badge" style="margin:0">' + fmtBu(Math.max(0,hRem)) + ' left</span>'
         + '</div>' + salesDetail + '</div>';
     }).join('') : '<div style="color:rgba(245,237,216,0.3);font-size:0.8rem">No harvest recorded</div>';
@@ -1842,14 +2019,14 @@ function renderSummary() {
 
     html += '<div class="card">'
       + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
-      + '<div><div class="card-field">' + field + (acres?' — '+acres+' ac':'') + '</div>'
+      + '<div><div class="card-field">' + esc(field) + (acres?' — '+acres+' ac':'') + '</div>'
       + '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px">'
       + (costPerAc>0?'<span class="chip chem" style="font-size:0.7rem">'+fmt$(costPerAc)+'/ac input</span>':'')
       + (buPerAc>0 ?'<span class="chip seed" style="font-size:0.7rem">'+buPerAc.toFixed(1)+' bu/ac</span>':'')
       + '</div></div>'
       + '<div style="text-align:right"><div style="font-family:Bebas Neue,sans-serif;font-size:1.5rem;color:' + (fldNet>=0?'#a8d99e':'#e8a8a3') + ';line-height:1">' + (fldNet>=0?'+':'') + fmt$(fldNet) + '</div>'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:0.65rem;color:rgba(245,237,216,0.35)">NET</div></div></div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px">'
+      + '<div style="font-family:IBM Plex Mono,monospace;font-size:0.65rem;color:rgba(245,237,216,0.35)">NET (BEFORE EXPENSES)</div></div></div>'
+      + '<div class="field-breakdown">'
       + '<div style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' + subHdr('🌱 Seed','#a8d99e') + seedRows + '</div>'
       + '<div style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' + subHdr('🧪 Fertilizer','#a8d4e8') + fertRows + '</div>'
       + '<div style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' + subHdr('⚗️ Chemical','#e8a8a3') + chemRows + '</div>'
@@ -1917,7 +2094,8 @@ function renderSettings() {
   var inpS = 'background:#1a1208;border:1px solid rgba(200,146,42,0.5);border-radius:4px;padding:8px 12px;color:#f2d98a;-webkit-text-fill-color:#f2d98a;opacity:1;font-size:0.95rem;width:100%;font-family:IBM Plex Sans,sans-serif';
 
   data.crops.forEach(function(c, i) {
-    var row = makEl('div', 'display:grid;grid-template-columns:1fr 160px 90px auto;gap:10px;align-items:center;margin-bottom:8px');
+    var row = makEl('div', 'align-items:center;margin-bottom:8px');
+    row.className = 'crop-grid';
     var nameIn = document.createElement('input');
     nameIn.type = 'text'; nameIn.value = c.name; nameIn.style.cssText = inpS;
     nameIn.addEventListener('change', (function(idx){ return function(){ updateCrop(idx,'name',this.value); }; })(i));
@@ -1979,7 +2157,7 @@ function openExpenseModal(id) {
   // Populate crop dropdown
   var cropSel = document.getElementById('exp-checkoff-crop');
   cropSel.innerHTML = (allData ? allData.crops || [] : []).map(function(c){
-    return '<option value="' + c.name + '">' + c.name + '</option>';
+    return '<option value="' + esc(c.name) + '">' + esc(c.name) + '</option>';
   }).join('');
 
   if (id) {
@@ -1992,11 +2170,13 @@ function openExpenseModal(id) {
     if (exp.category === 'fuel') {
       document.getElementById('exp-fuel-type').value  = exp.fuelType  || 'diesel';
       document.getElementById('exp-fuel-qty').value   = exp.fuelQty   || '';
+      document.getElementById('exp-fuel-unit').value  = exp.fuelUnit  || 'L';
       document.getElementById('exp-fuel-price').value = exp.fuelPrice || '';
       document.getElementById('exp-fuel-total').value = exp.total     || '';
     } else if (exp.category === 'checkoff') {
       document.getElementById('exp-checkoff-crop').value  = exp.crop  || '';
       document.getElementById('exp-checkoff-qty').value   = exp.qty   || '';
+      document.getElementById('exp-checkoff-unit').value  = exp.unit  || 'bu';
       document.getElementById('exp-checkoff-rate').value  = exp.rate  || '';
       document.getElementById('exp-checkoff-total').value = exp.total || '';
     } else {
@@ -2010,9 +2190,11 @@ function openExpenseModal(id) {
     document.getElementById('exp-notes').value    = '';
     document.getElementById('exp-fuel-type').value  = 'diesel';
     document.getElementById('exp-fuel-qty').value   = '';
+    document.getElementById('exp-fuel-unit').value  = 'L';
     document.getElementById('exp-fuel-price').value = '';
     document.getElementById('exp-fuel-total').value = '';
     document.getElementById('exp-checkoff-qty').value   = '';
+    document.getElementById('exp-checkoff-unit').value  = 'bu';
     document.getElementById('exp-checkoff-rate').value  = '';
     document.getElementById('exp-checkoff-total').value = '';
     document.getElementById('exp-description').value = '';
@@ -2054,12 +2236,14 @@ function saveExpense() {
   if (cat === 'fuel') {
     exp.fuelType  = document.getElementById('exp-fuel-type').value;
     exp.fuelQty   = parseFloat(document.getElementById('exp-fuel-qty').value)   || 0;
+    exp.fuelUnit  = document.getElementById('exp-fuel-unit').value;
     exp.fuelPrice = parseFloat(document.getElementById('exp-fuel-price').value) || 0;
     exp.total     = parseFloat(document.getElementById('exp-fuel-total').value) || (exp.fuelQty * exp.fuelPrice);
     if (!exp.total) { alert('Enter fuel quantity and price.'); return; }
   } else if (cat === 'checkoff') {
     exp.crop  = document.getElementById('exp-checkoff-crop').value;
     exp.qty   = parseFloat(document.getElementById('exp-checkoff-qty').value)   || 0;
+    exp.unit  = document.getElementById('exp-checkoff-unit').value;
     exp.rate  = parseFloat(document.getElementById('exp-checkoff-rate').value)  || 0;
     exp.total = parseFloat(document.getElementById('exp-checkoff-total').value) || (exp.qty * exp.rate);
     if (!exp.total) { alert('Enter quantity and rate.'); return; }
@@ -2145,8 +2329,8 @@ function renderExpenses() {
 
       var title = '';
       var sub   = e.date || '';
-      if (e.category==='fuel')     { title = (e.fuelType||'Fuel') + (e.fuelQty?' — '+e.fuelQty+' L':''); }
-      if (e.category==='checkoff') { title = (e.crop||'Checkoff') + (e.qty?' — '+e.qty+' bu':''); }
+      if (e.category==='fuel')     { title = (e.fuelType||'Fuel') + (e.fuelQty?' — '+e.fuelQty+' '+(e.fuelUnit||'L'):''); }
+      if (e.category==='checkoff') { title = (e.crop||'Checkoff') + (e.qty?' — '+e.qty+' '+(e.unit||'bu'):''); }
       if (e.category==='other')    { title = e.description||'Expense'; }
       if (e.notes) sub += (sub?' · ':'') + e.notes;
 
@@ -2184,15 +2368,11 @@ function renderExpenses() {
 }
 
 
-function deleteExpense(id) {
-  if (!confirm('Delete this expense?')) return;
-  var season = allData.seasons[currentSeason];
-  season.expenses = (season.expenses || []).filter(function(e){ return e.id !== id; });
-  save();
-  renderExpenses();
-}
-
 // ===================== INIT =====================
+['sell-qty','sell-price','sell-unit'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', showSellEquiv);
+  document.getElementById(id).addEventListener('change', showSellEquiv);
+});
 initFirebase();
 
 </script>
