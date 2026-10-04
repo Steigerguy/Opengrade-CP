@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate Icons</title></head>
+<body>
+<canvas id="c192" width="192" height="192" style="border:1px solid #ccc;margin:10px"></canvas>
+<canvas id="c512" width="512" height="512" style="border:1px solid #ccc;margin:10px"></canvas>
+<br>
+<button onclick="download('c192','icon-192.png')">Download icon-192.png</button>
+<button onclick="download('c512','icon-512.png')">Download icon-512.png</button>
+<script>
+function drawIcon(canvas) {
+  var s = canvas.width;
+  var ctx = canvas.getContext('2d');
+  var r = s * 0.16;
+
+  // Background rounded rect
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(s-r, 0); ctx.quadraticCurveTo(s, 0, s, r);
+  ctx.lineTo(s, s-r); ctx.quadraticCurveTo(s, s, s-r, s);
+  ctx.lineTo(r, s); ctx.quadraticCurveTo(0, s, 0, s-r);
+  ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.fillStyle = '#3d2b0f'; ctx.fill();
+
+  // Soil
+  ctx.fillStyle = '#1a1208';
+  ctx.fillRect(0, s*0.76, s, s*0.24);
+
+  // Dividing line
+  ctx.fillStyle = '#2a1f0e';
+  ctx.fillRect(0, s*0.73, s, s*0.05);
+
+  // Stalks
+  ctx.strokeStyle = '#c8922a'; ctx.lineWidth = s*0.012; ctx.lineCap = 'round';
+  var stalks = [0.23, 0.39, 0.5, 0.61, 0.77];
+  var heights = [0.56, 0.46, 0.40, 0.46, 0.56];
+  stalks.forEach(function(x, i) {
+    ctx.beginPath(); ctx.moveTo(s*x, s*0.73); ctx.lineTo(s*x, s*heights[i]); ctx.stroke();
+  });
+
+  // Wheat heads
+  ctx.fillStyle = '#e8b84b';
+  stalks.forEach(function(x, i) {
+    var cy = s*heights[i];
+    var rx = s*0.028, ry = s*0.056;
+    // Center kernel
+    ctx.beginPath(); ctx.ellipse(s*x, cy - ry*0.5, rx, ry, 0, 0, Math.PI*2); ctx.fill();
+    // Side kernels
+    ctx.beginPath(); ctx.ellipse(s*x - rx*1.4, cy + ry*0.2, rx*0.8, ry*0.8, -0.3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s*x + rx*1.4, cy + ry*0.2, rx*0.8, ry*0.8, 0.3, 0, Math.PI*2); ctx.fill();
+  });
+
+  // FR text
+  ctx.fillStyle = '#f2d98a';
+  ctx.font = 'bold ' + Math.round(s*0.18) + 'px Arial Black, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.letterSpacing = s*0.02 + 'px';
+  ctx.fillText('FR', s*0.5, s*0.885);
+}
+
+drawIcon(document.getElementById('c192'));
+drawIcon(document.getElementById('c512'));
+
+function download(id, name) {
+  var a = document.createElement('a');
+  a.href = document.getElementById(id).toDataURL('image/png');
+  a.download = name; a.click();
+}
+</script>
+</body>
+</html>

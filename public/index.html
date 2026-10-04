@@ -1,0 +1,2207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Field Records</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#c8922a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Field Records">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<style>
+
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --soil: #2a1f0e;
+    --earth: #3d2b0f;
+    --wheat: #c8922a;
+    --wheat-light: #e8b84b;
+    --grain: #f2d98a;
+    --sky: #7db8d4;
+    --sky-dark: #4a8aad;
+    --green: #4a7c3f;
+    --green-light: #6ba35e;
+    --red: #b84a3f;
+    --cream: #f5edd8;
+    --text: #f5edd8;
+    --card: rgba(255,255,255,0.05);
+    --border: rgba(200,146,42,0.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  input, select, textarea {
+    color: #f5edd8 !important;
+    -webkit-text-fill-color: #f5edd8 !important;
+    opacity: 1 !important;
+  }
+  input::placeholder { color: rgba(245,237,216,0.35) !important; -webkit-text-fill-color: rgba(245,237,216,0.35) !important; }
+
+  body {
+    background: var(--soil);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    background-image: 
+      repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(200,146,42,0.03) 60px, rgba(200,146,42,0.03) 61px),
+      repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(200,146,42,0.03) 60px, rgba(200,146,42,0.03) 61px);
+  }
+
+  header {
+    background: var(--earth);
+    border-bottom: 3px solid var(--wheat);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  }
+
+  header .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    color: var(--wheat);
+    letter-spacing: 3px;
+    line-height: 1;
+  }
+
+  header .logo span { color: var(--grain); }
+
+  .year-badge {
+    background: var(--wheat);
+    color: var(--soil);
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-left: auto;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 0;
+    background: var(--earth);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    overflow-x: auto;
+  }
+
+  .nav-tab {
+    padding: 14px 24px;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(245,237,216,0.5);
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+
+  .nav-tab:hover { color: var(--wheat-light); }
+  .nav-tab.active { color: var(--wheat); border-bottom-color: var(--wheat); }
+
+  .main { padding: 28px 32px; max-width: 1100px; margin: 0 auto; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    color: var(--wheat);
+    letter-spacing: 2px;
+  }
+
+  .btn {
+    background: var(--wheat);
+    color: var(--soil);
+    border: none;
+    padding: 10px 22px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .btn:hover { background: var(--wheat-light); transform: translateY(-1px); }
+
+  .btn-sm { padding: 6px 14px; font-size: 0.72rem; }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-danger:hover { background: #d45c50; }
+  .btn-green { background: var(--green); color: white; }
+  .btn-green:hover { background: var(--green-light); }
+  .btn-sky { background: var(--sky-dark); color: white; }
+  .btn-sky:hover { background: var(--sky); }
+
+  /* Cards / Records */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 22px 26px;
+    margin-bottom: 16px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: rgba(200,146,42,0.5); }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .card-field {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    color: var(--wheat-light);
+    letter-spacing: 1px;
+  }
+
+  .card-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: rgba(245,237,216,0.45);
+    margin-top: 3px;
+  }
+
+  .card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+  .chip {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 13px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--grain);
+  }
+
+  .chip.seed { border-color: rgba(107,163,94,0.5); color: #a8d99e; }
+  .chip.fert { border-color: rgba(125,184,212,0.5); color: #a8d4e8; }
+  .chip.chem { border-color: rgba(184,74,63,0.5); color: #e8a8a3; }
+  .chip.cost { border-color: rgba(200,146,42,0.4); color: var(--grain); }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--earth);
+    border: 1px solid var(--wheat);
+    border-radius: 10px;
+    padding: 30px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  }
+
+  .modal h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    color: var(--wheat);
+    letter-spacing: 2px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+  }
+
+  .form-group { margin-bottom: 16px; }
+
+  .form-group label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--wheat-light);
+    margin-bottom: 6px;
+  }
+
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px 14px;
+    color: var(--cream);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+  }
+
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--wheat);
+  }
+
+  .form-group select option { background: var(--earth); }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .sub-section {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .sub-section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .dynamic-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .dynamic-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .dynamic-item.three-col { grid-template-columns: 1fr 1fr 1fr auto; }
+
+  .remove-btn {
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .remove-btn:hover { background: #d45c50; }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn-cancel {
+    background: transparent;
+    color: var(--cream);
+    border: 1px solid var(--border);
+    padding: 10px 22px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .btn-cancel:hover { border-color: var(--wheat); color: var(--wheat); }
+
+  /* Summary Cards */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.4rem;
+    color: var(--wheat);
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(245,237,216,0.5);
+    margin-top: 5px;
+  }
+
+  /* Harvest sale items */
+  .sale-item {
+    background: rgba(0,0,0,0.15);
+    border-left: 3px solid var(--sky-dark);
+    padding: 10px 14px;
+    margin-top: 10px;
+    border-radius: 0 6px 6px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .progress-bar {
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--wheat));
+    border-radius: 3px;
+    transition: width 0.4s;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: rgba(245,237,216,0.3);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+  }
+
+  .empty-state .icon { font-size: 3rem; display: block; margin-bottom: 12px; }
+
+  .col-hdr {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(245,237,216,0.3);
+  }
+
+  /* Harvest remaining badge */
+  .remaining-badge {
+    display: inline-block;
+    background: rgba(74,124,63,0.25);
+    border: 1px solid rgba(74,124,63,0.5);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: #a8d99e;
+    margin-top: 6px;
+  }
+
+  .sold-badge {
+    display: inline-block;
+    background: rgba(125,184,212,0.2);
+    border: 1px solid rgba(125,184,212,0.4);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: #a8d4e8;
+    margin-left: 8px;
+    margin-top: 6px;
+  }
+
+  @media (max-width: 600px) {
+    .main { padding: 16px; }
+    header { padding: 14px 16px; }
+    .nav-tabs { padding: 0 16px; }
+    .form-row { grid-template-columns: 1fr; }
+    .dynamic-item, .dynamic-item.three-col { grid-template-columns: 1fr auto; }
+    .dynamic-item.three-col input:nth-child(3) { grid-column: 1; }
+  }
+
+  /* Auth screen */
+  #auth-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .auth-card {
+    background: var(--earth);
+    border: 1px solid var(--wheat);
+    border-radius: 10px;
+    padding: 36px 30px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  }
+  .auth-card .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.4rem;
+    color: var(--wheat);
+    letter-spacing: 3px;
+    margin-bottom: 6px;
+  }
+  .auth-card .logo span { color: var(--grain); }
+  .auth-subtitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: rgba(245,237,216,0.4);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .auth-error {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: #e8a8a3;
+    min-height: 20px;
+    margin-bottom: 8px;
+  }
+  /* Sync indicator */
+  #save-indicator {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--wheat-light);
+    opacity: 0;
+    transition: opacity 0.3s;
+    margin-left: 10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ====== AUTH SCREEN ====== -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="logo">Field <span>Records</span></div>
+    <div class="auth-subtitle">Sign in to sync your data</div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="you@example.com"
+        onkeydown="if(event.key==='Enter') document.getElementById('auth-pass').focus()">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="auth-pass" placeholder="Password"
+        onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn" style="flex:1" onclick="doLogin()">Sign In</button>
+      <button class="btn-cancel" style="flex:1;border-radius:4px;padding:10px;cursor:pointer" onclick="doRegister()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== APP SCREEN ====== -->
+<div id="app-screen" style="display:none">
+
+<header>
+  <div class="logo">Field <span>Records</span></div>
+  <div style="display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap">
+    <span id="save-indicator">✓ Synced</span>
+    <select id="season-select" onchange="switchSeason(this.value)"
+      style="background:rgba(0,0,0,0.35);border:1px solid var(--wheat);border-radius:4px;color:var(--wheat);font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:0.82rem;padding:5px 10px;cursor:pointer">
+    </select>
+    <button class="btn btn-sm" onclick="newSeason()" style="white-space:nowrap">+ Season</button>
+    <button class="btn-cancel" onclick="doLogout()"
+      style="font-size:0.72rem;padding:6px 12px;cursor:pointer;border-radius:4px;white-space:nowrap"
+      title="Sign out">Sign Out</button>
+  </div>
+</header>
+
+<nav class="nav-tabs">
+  <div class="nav-tab active" onclick="showSection('inputs')">▸ Field Inputs</div>
+  <div class="nav-tab" onclick="showSection('harvest')">▸ Harvest</div>
+  <div class="nav-tab" onclick="showSection('summary')">▸ Summary</div>
+  <div class="nav-tab" onclick="showSection('expenses')">$ Expenses</div>
+  <div class="nav-tab" onclick="showSection('settings')">⚙ Settings</div>
+</nav>
+
+<div class="main">
+
+  <!-- FIELD INPUTS SECTION -->
+  <div class="section active" id="section-inputs">
+    <div class="section-header">
+      <div class="section-title">Field Inputs</div>
+      <button class="btn" onclick="openInputModal()">+ Add Field Record</button>
+    </div>
+    <div id="inputs-list"></div>
+  </div>
+
+  <!-- HARVEST SECTION -->
+  <div class="section" id="section-harvest">
+    <div class="section-header">
+      <div class="section-title">Harvest Records</div>
+      <button class="btn btn-green" onclick="openHarvestModal()">+ Add Harvest</button>
+    </div>
+    <div id="harvest-list"></div>
+  </div>
+
+  <!-- SUMMARY SECTION -->
+  <div class="section" id="section-summary">
+    <div class="section-title" style="margin-bottom:20px">Season Summary</div>
+    <div class="summary-grid" id="summary-stats"></div>
+    <div id="summary-details"></div>
+  </div>
+
+  <!-- EXPENSES SECTION -->
+  <div class="section" id="section-expenses">
+    <div class="section-header">
+      <div class="section-title">Expenses</div>
+      <button class="btn" onclick="openExpenseModal()">+ Add Expense</button>
+    </div>
+    <div id="expenses-summary" style="margin-bottom:20px"></div>
+    <div id="expenses-list"></div>
+  </div>
+
+  <!-- SETTINGS SECTION -->
+  <div class="section" id="section-settings">
+    <div class="section-header">
+      <div class="section-title">Settings</div>
+    </div>
+
+    <div class="card" style="max-width:620px;margin-bottom:16px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--wheat);letter-spacing:2px;margin-bottom:6px">Seasons</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:rgba(245,237,216,0.45);margin-bottom:16px;line-height:1.6">
+        Each season has its own field inputs and harvest records. Crop conversion settings are shared across all seasons.
+      </div>
+      <div id="seasons-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+      <button class="btn" onclick="newSeason()">+ Add Season</button>
+    </div>
+
+    <div class="card" style="max-width:620px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--wheat);letter-spacing:2px;margin-bottom:6px">Crop Conversions</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:rgba(245,237,216,0.45);margin-bottom:18px;line-height:1.6">
+        Set the bushels-per-tonne rate for each crop. These are used when recording sales in tonnes.<br>
+        Standard values are pre-loaded — adjust if your elevator uses different weights.
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 160px 90px auto;gap:10px;margin-bottom:8px;padding:0 2px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(245,237,216,0.35)">Crop</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(245,237,216,0.35)">Bu / Tonne</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(245,237,216,0.35);text-align:center">Test Wt</span>
+        <span></span>
+      </div>
+      <div id="crops-list" style="display:flex;flex-direction:column;gap:10px"></div>
+
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--wheat-light);margin-bottom:10px">Add New Crop</div>
+        <div style="display:grid;grid-template-columns:1fr 160px auto;gap:10px;align-items:end">
+          <div class="form-group" style="margin:0">
+            <label>Crop Name</label>
+            <input type="text" id="new-crop-name" placeholder="e.g. Flax, Lentils">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Bu / Tonne</label>
+            <input type="number" id="new-crop-bu" placeholder="e.g. 44.09" min="1" step="0.001">
+          </div>
+          <button class="btn" style="margin-bottom:0;height:42px" onclick="addCrop()">+ Add</button>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn-cancel" style="font-size:0.72rem;padding:7px 14px;cursor:pointer;border-radius:4px" onclick="resetCrops()">↺ Reset to Defaults</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:620px;margin-top:16px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--wheat);letter-spacing:2px;margin-bottom:10px">Common Reference Values</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:rgba(245,237,216,0.4);line-height:2">
+        Wheat &nbsp;— 36.744 bu/t &nbsp;|&nbsp; Corn — 39.368 bu/t<br>
+        Canola — 44.092 bu/t &nbsp;|&nbsp; Oats — 64.842 bu/t<br>
+        Soybeans — 36.744 bu/t &nbsp;|&nbsp; Peas — 39.368 bu/t<br>
+        Barley — 45.930 bu/t
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+
+</div><!-- end app-screen -->
+
+<!-- ====== EXPENSE MODAL ====== -->
+<div class="modal-overlay" id="expenseModal">
+  <div class="modal">
+    <h2 id="expenseModalTitle">New Expense</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="exp-date">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="exp-category" onchange="updateExpenseCategory()">
+          <option value="fuel">⛽ Fuel</option>
+          <option value="checkoff">🌾 Grain Checkoff</option>
+          <option value="other">📋 Other</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Fuel fields -->
+    <div id="exp-fuel-fields">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fuel Type</label>
+          <select id="exp-fuel-type">
+            <option value="diesel">Diesel</option>
+            <option value="gasoline">Gasoline</option>
+            <option value="propane">Propane</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Litres / Gallons</label>
+          <input type="number" id="exp-fuel-qty" placeholder="e.g. 500" min="0" step="0.1" oninput="calcExpenseTotal()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Price per Litre/Gallon ($)</label>
+          <input type="number" id="exp-fuel-price" placeholder="e.g. 1.45" min="0" step="0.001" oninput="calcExpenseTotal()">
+        </div>
+        <div class="form-group">
+          <label>Total Cost ($)</label>
+          <input type="number" id="exp-fuel-total" placeholder="Auto-calculated" min="0" step="0.01">
+        </div>
+      </div>
+    </div>
+
+    <!-- Checkoff fields -->
+    <div id="exp-checkoff-fields" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Crop</label>
+          <select id="exp-checkoff-crop"></select>
+        </div>
+        <div class="form-group">
+          <label>Bushels / Tonnes</label>
+          <input type="number" id="exp-checkoff-qty" placeholder="e.g. 1000" min="0" step="0.1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Rate ($/bu or $/t)</label>
+          <input type="number" id="exp-checkoff-rate" placeholder="e.g. 0.50" min="0" step="0.001" oninput="calcCheckoffTotal()">
+        </div>
+        <div class="form-group">
+          <label>Total ($)</label>
+          <input type="number" id="exp-checkoff-total" placeholder="Auto-calculated" min="0" step="0.01">
+        </div>
+      </div>
+    </div>
+
+    <!-- Other fields -->
+    <div id="exp-other-fields" style="display:none">
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="exp-description" placeholder="e.g. Equipment repair, Insurance">
+      </div>
+      <div class="form-group">
+        <label>Amount ($)</label>
+        <input type="number" id="exp-other-total" placeholder="e.g. 450.00" min="0" step="0.01">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Notes</label>
+      <input type="text" id="exp-notes" placeholder="Optional notes">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeExpenseModal()">Cancel</button>
+      <button class="btn" onclick="saveExpense()">Save Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== NEW SEASON MODAL ====== -->
+<div class="modal-overlay" id="newSeasonModal">
+  <div class="modal" style="max-width:400px">
+    <h2>New Season</h2>
+    <div class="form-group">
+      <label>Season Name</label>
+      <input type="text" id="new-season-name" placeholder="e.g. 2025, 2024-25, Spring 2026"
+        onkeydown="if(event.key==='Enter') saveNewSeason()">
+    </div>
+    <div id="new-season-error" style="color:#e8a8a3;font-family:IBM Plex Mono,monospace;font-size:0.75rem;min-height:18px;margin-top:-8px;margin-bottom:8px"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeNewSeasonModal()">Cancel</button>
+      <button class="btn" onclick="saveNewSeason()">Create Season</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== INPUT MODAL ====== -->
+<div class="modal-overlay" id="inputModal">
+  <div class="modal">
+    <h2 id="inputModalTitle">New Field Record</h2>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Field Name / Number</label>
+        <input type="text" id="i-field" placeholder="e.g. North 80, Field 4">
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="i-date">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Acres</label>
+      <input type="number" id="i-acres" placeholder="e.g. 80" min="0" step="0.1">
+    </div>
+
+    <!-- SEED -->
+    <div class="sub-section">
+      <div class="sub-section-title">
+        🌱 Seed
+        <button class="btn btn-sm" onclick="addSeedRow()">+ Add</button>
+      </div>
+      <div class="dynamic-list" id="seed-list"></div>
+    </div>
+
+    <!-- FERTILIZER -->
+    <div class="sub-section">
+      <div class="sub-section-title" style="color:#a8d4e8">
+        🧪 Fertilizer
+        <button class="btn btn-sm btn-sky" onclick="addFertRow()">+ Add</button>
+      </div>
+      <div class="dynamic-list" id="fert-list"></div>
+    </div>
+
+    <!-- CHEMICAL -->
+    <div class="sub-section">
+      <div class="sub-section-title" style="color:#e8a8a3">
+        ⚗️ Chemical
+        <button class="btn btn-sm btn-danger" onclick="addChemRow()">+ Add</button>
+      </div>
+      <div class="dynamic-list" id="chem-list"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="i-notes" rows="2" placeholder="Any additional notes..."></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeInputModal()">Cancel</button>
+      <button class="btn" onclick="saveInputRecord()">Save Record</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== HARVEST MODAL ====== -->
+<div class="modal-overlay" id="harvestModal">
+  <div class="modal">
+    <h2 id="harvestModalTitle">New Harvest Record</h2>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Field Name / Number</label>
+        <input type="text" id="h-field" placeholder="e.g. North 80">
+      </div>
+      <div class="form-group">
+        <label>Date Harvested</label>
+        <input type="date" id="h-date">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Bushels Combined</label>
+        <input type="number" id="h-bushels" placeholder="e.g. 4200" min="0" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>Crop Type</label>
+        <select id="h-crop"><option value="">Select crop...</option></select>
+      </div>
+    </div>
+
+    <div class="sub-section">
+      <div class="sub-section-title" style="color: #a8d99e">
+        💰 Sales
+        <button class="btn btn-sm btn-green" onclick="addSaleRow()">+ Add Sale</button>
+      </div>
+      <div class="dynamic-list" id="sale-list"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="h-notes" rows="2" placeholder="Any additional notes..."></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeHarvestModal()">Cancel</button>
+      <button class="btn btn-green" onclick="saveHarvestRecord()">Save Harvest</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SELL MODAL ====== -->
+<div class="modal-overlay" id="sellModal">
+  <div class="modal">
+    <h2>Record Sale</h2>
+    <input type="hidden" id="sell-harvest-id">
+    <div id="sell-crop-label" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--wheat-light);background:rgba(200,146,42,0.1);border:1px solid var(--border);border-radius:4px;padding:6px 12px;margin-bottom:14px"></div>
+    <div class="form-group">
+      <label>Unit</label>
+      <select id="sell-unit" onchange="updateSellUnit()">
+        <option value="bu">Bushels</option>
+        <option value="t">Tonnes</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label id="sell-qty-label">Bushels Sold</label>
+        <input type="number" id="sell-qty" placeholder="e.g. 1000" min="0" step="0.1">
+      </div>
+      <div class="form-group">
+        <label id="sell-price-label">Price per Bushel ($)</label>
+        <input type="number" id="sell-price" placeholder="e.g. 4.85" min="0" step="0.001">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date Sold</label>
+        <input type="date" id="sell-date">
+      </div>
+      <div class="form-group">
+        <label>Buyer / Location</label>
+        <input type="text" id="sell-buyer" placeholder="e.g. Co-op, Elevator name">
+      </div>
+    </div>
+    <div id="sell-equiv" style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:rgba(245,237,216,0.45);margin-top:-6px;margin-bottom:10px;min-height:18px"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeSellModal()">Cancel</button>
+      <button class="btn btn-green" onclick="saveSale()">Record Sale</button>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+// ===================== FIREBASE CONFIG =====================
+// Replace these values with your Firebase project settings
+const FIREBASE_CONFIG = {
+  apiKey:        "AIzaSyARcHHdW0NJSiMPUrW2nU8uOBftgjyWupk",
+  authDomain:    "shopping-list-app-d077b.firebaseapp.com",
+  databaseURL:   "https://shopping-list-app-d077b-default-rtdb.firebaseio.com",
+  projectId:     "shopping-list-app-d077b",
+  storageBucket: "shopping-list-app-d077b.appspot.com"
+};
+
+// ===================== DATA =====================
+const DEFAULT_CROPS = [
+  { name: 'Wheat',    buPerTonne: 36.744 },
+  { name: 'Corn',     buPerTonne: 39.368 },
+  { name: 'Canola',   buPerTonne: 44.092 },
+  { name: 'Oats',     buPerTonne: 64.842 },
+  { name: 'Soybeans', buPerTonne: 36.744 },
+  { name: 'Peas',     buPerTonne: 39.368 },
+  { name: 'Barley',   buPerTonne: 45.930 },
+];
+
+let currentUser = null;
+let idToken = null;
+let allData = null;
+let currentSeason = new Date().getFullYear().toString();
+let saveTimeout = null;
+
+// Firebase REST endpoints
+var DB_URL  = FIREBASE_CONFIG.databaseURL;
+var API_KEY = FIREBASE_CONFIG.apiKey;
+var AUTH_URL = 'https://identitytoolkit.googleapis.com/v1/accounts';
+
+var data = {
+  get inputs()    { return (allData && allData.seasons && allData.seasons[currentSeason]) ? allData.seasons[currentSeason].inputs   || [] : []; },
+  set inputs(v)   { if (allData && allData.seasons[currentSeason]) allData.seasons[currentSeason].inputs   = v; },
+  get harvests()  { return (allData && allData.seasons && allData.seasons[currentSeason]) ? allData.seasons[currentSeason].harvests || [] : []; },
+  set harvests(v) { if (allData && allData.seasons[currentSeason]) allData.seasons[currentSeason].harvests = v; },
+  get crops()     { return allData ? allData.crops || [] : []; },
+  set crops(v)    { if (allData) allData.crops = v; }
+};
+
+// ===================== AUTH (REST) =====================
+function initFirebase() {
+  // Check for saved session
+  var saved = localStorage.getItem('fr_session');
+  if (saved) {
+    try {
+      var sess = JSON.parse(saved);
+      currentUser = sess.user;
+      idToken     = sess.idToken;
+      showApp(currentUser);
+      loadData();
+      // Refresh token in background
+      refreshToken(sess.refreshToken);
+    } catch(e) { showAuthScreen(); }
+  } else {
+    showAuthScreen();
+  }
+}
+
+function refreshToken(refreshToken) {
+  fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({grant_type:'refresh_token', refresh_token: refreshToken})
+  }).then(function(r){ return r.json(); }).then(function(d) {
+    if (d.id_token) {
+      idToken = d.id_token;
+      var saved = JSON.parse(localStorage.getItem('fr_session') || '{}');
+      saved.idToken = d.id_token;
+      saved.refreshToken = d.refresh_token;
+      localStorage.setItem('fr_session', JSON.stringify(saved));
+    }
+  }).catch(function(){});
+}
+
+function showAuthScreen() {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display  = 'none';
+  document.getElementById('auth-error').textContent = '';
+}
+
+function showApp(user) {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display  = 'block';
+}
+
+function authRequest(endpoint, email, pass, errEl) {
+  errEl.textContent = endpoint === 'signInWithPassword' ? 'Signing in...' : 'Creating account...';
+  fetch(AUTH_URL + ':' + endpoint + '?key=' + API_KEY, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email: email, password: pass, returnSecureToken: true})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    if (d.error) { errEl.textContent = d.error.message.replace(/_/g,' ').toLowerCase(); return; }
+    idToken     = d.idToken;
+    currentUser = {uid: d.localId, email: d.email};
+    localStorage.setItem('fr_session', JSON.stringify({user: currentUser, idToken: d.idToken, refreshToken: d.refreshToken}));
+    errEl.textContent = '';
+    showApp(currentUser);
+    loadData();
+  })
+  .catch(function(e){ errEl.textContent = 'Network error. Check connection.'; });
+}
+
+function doLogin() {
+  var email = document.getElementById('auth-email').value.trim();
+  var pass  = document.getElementById('auth-pass').value;
+  var err   = document.getElementById('auth-error');
+  if (!email || !pass) { err.textContent = 'Enter email and password.'; return; }
+  authRequest('signInWithPassword', email, pass, err);
+}
+
+function doRegister() {
+  var email = document.getElementById('auth-email').value.trim();
+  var pass  = document.getElementById('auth-pass').value;
+  var err   = document.getElementById('auth-error');
+  if (!email || !pass) { err.textContent = 'Enter email and password.'; return; }
+  authRequest('signUp', email, pass, err);
+}
+
+function doLogout() {
+  localStorage.removeItem('fr_session');
+  currentUser = null; idToken = null; allData = null;
+  showAuthScreen();
+}
+
+// ===================== FIREBASE DATA (REST) =====================
+function dbPath() {
+  return DB_URL + '/users/' + currentUser.uid + '/fieldRecords.json?auth=' + idToken;
+}
+
+function loadData() {
+  fetch(dbPath())
+  .then(function(r){ return r.json(); })
+  .then(function(val) {
+    if (val && !val.error) {
+      allData = val;
+      Object.keys(allData.seasons || {}).forEach(function(s) {
+        allData.seasons[s].inputs   = allData.seasons[s].inputs   || [];
+        allData.seasons[s].harvests = allData.seasons[s].harvests || [];
+      });
+    } else {
+      var yr = new Date().getFullYear().toString();
+      allData = {
+        currentSeason: yr,
+        crops: DEFAULT_CROPS.map(function(c){ return Object.assign({},c); }),
+        seasons: {}
+      };
+      allData.seasons[yr] = { inputs: [], harvests: [] };
+    }
+
+    var cropsValid = allData.crops && allData.crops.length > 0
+      && allData.crops.every(function(c){ return c && typeof c.name === 'string' && c.name.length > 0 && c.buPerTonne > 0; });
+    if (!cropsValid) {
+      allData.crops = DEFAULT_CROPS.map(function(c){ return Object.assign({},c); });
+    }
+
+    currentSeason = allData.currentSeason || Object.keys(allData.seasons)[0];
+    renderSeasonSelect();
+    renderInputs();
+    renderHarvests();
+    renderExpenses();
+    renderSettings();
+    var active = document.querySelector('.section.active');
+    if (active && active.id === 'section-summary') renderSummary();
+    if (active && active.id === 'section-expenses') renderExpenses();
+  })
+  .catch(function(e){ console.error('Load error:', e); });
+}
+
+function save() {
+  if (!currentUser || !allData) return;
+  allData.currentSeason = currentSeason;
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(function() {
+    fetch(dbPath(), {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(allData)
+    })
+    .then(function(r){
+      if (!r.ok) {
+        // Token may have expired — try refreshing
+        var saved = JSON.parse(localStorage.getItem('fr_session') || '{}');
+        if (saved.refreshToken) refreshToken(saved.refreshToken);
+      }
+    })
+    .catch(function(e){ console.error('Save error:', e); });
+  }, 800);
+  showSaveIndicator();
+}
+
+function showSaveIndicator() {
+  var el = document.getElementById('save-indicator');
+  if (!el) return;
+  el.textContent = '↑ Saving...';
+  el.style.opacity = '1';
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(function(){
+    el.textContent = '✓ Synced';
+    setTimeout(function(){ el.style.opacity = '0'; }, 1500);
+  }, 1000);
+}
+
+// ===================== SEASONS =====================
+function switchSeason(s) {
+  currentSeason = s;
+  allData.currentSeason = s;
+  save();
+  renderSeasonSelect();
+  renderInputs();
+  renderHarvests();
+  var active = (document.querySelector('.section.active') || {}).id;
+  if (active === 'section-summary') renderSummary();
+  if (active === 'section-settings') renderSettings();
+}
+
+function newSeason() {
+  document.getElementById('newSeasonModal').classList.add('open');
+  document.getElementById('new-season-name').value = '';
+  setTimeout(function(){ document.getElementById('new-season-name').focus(); }, 100);
+}
+
+function saveNewSeason() {
+  var name = document.getElementById('new-season-name').value.trim();
+  if (!name) return;
+  if (allData.seasons[name]) {
+    document.getElementById('new-season-error').textContent = 'Season already exists.';
+    return;
+  }
+  allData.seasons[name] = { inputs: [], harvests: [] };
+  currentSeason = name;
+  allData.currentSeason = name;
+  save();
+  document.getElementById('newSeasonModal').classList.remove('open');
+  renderSeasonSelect();
+  renderInputs();
+  renderHarvests();
+}
+
+function closeNewSeasonModal() {
+  document.getElementById('newSeasonModal').classList.remove('open');
+}
+
+function deleteSeason(name) {
+  var seasons = Object.keys(allData.seasons);
+  if (seasons.length <= 1) { alert("Can't delete the only season."); return; }
+  if (!confirm('Delete season "' + name + '" and all its records?')) return;
+  delete allData.seasons[name];
+  if (currentSeason === name) currentSeason = Object.keys(allData.seasons)[0];
+  allData.currentSeason = currentSeason;
+  save();
+  renderSeasonSelect();
+  renderSettings();
+  renderInputs();
+  renderHarvests();
+}
+
+function renderSeasonSelect() {
+  var sel = document.getElementById('season-select');
+  if (!sel || !allData) return;
+  var seasons = Object.keys(allData.seasons).sort().reverse();
+  sel.innerHTML = seasons.map(function(s) {
+    return '<option value="' + s + '"' + (s === currentSeason ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+}
+
+// ===================== NAVIGATION =====================
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById('section-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'summary')  renderSummary();
+  if (name === 'expenses') renderExpenses();
+  if (name === 'settings') renderSettings();
+}
+
+// ===================== ROW HELPERS =====================
+function inputS() {
+  return 'background:rgba(0,0,0,0.3);border:1px solid rgba(200,146,42,0.25);border-radius:4px;padding:8px 10px;color:#f5edd8 !important;-webkit-text-fill-color:#f5edd8;opacity:1;font-size:0.88rem;width:100%';
+}
+function totalS() {
+  return 'background:rgba(0,0,0,0.3);border:1px solid rgba(200,146,42,0.4);border-radius:4px;padding:8px 10px;color:#f2d98a !important;-webkit-text-fill-color:#f2d98a;opacity:1;font-size:0.88rem;width:100%';
+}
+
+function wireCalc(div, qtyIdx, ucIdx, totIdx) {
+  var nums = div.querySelectorAll('input[type=number]');
+  function recalc() {
+    var q = parseFloat(nums[qtyIdx].value) || 0;
+    var u = parseFloat(nums[ucIdx].value)  || 0;
+    if (q && u) nums[totIdx].value = (q * u).toFixed(2);
+  }
+  nums[qtyIdx].addEventListener('input', recalc);
+  nums[ucIdx].addEventListener('input',  recalc);
+}
+
+function addSeedRow(name, qty, seedUnit, unitCost, cost, qtyPerAc) {
+  name=name||''; qty=qty||''; seedUnit=seedUnit||'bags';
+  unitCost=unitCost||''; cost=cost||''; qtyPerAc=qtyPerAc||'';
+  var s=inputS(); var t=totalS();
+  var div=document.createElement('div');
+  div.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px;background:rgba(0,0,0,0.2);border-radius:6px;border:1px solid rgba(107,163,94,0.2)';
+
+  // Row 1: variety + remove
+  var row1=document.createElement('div'); row1.style.cssText='display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center';
+  var nameIn=document.createElement('input'); nameIn.type='text'; nameIn.placeholder='Seed variety'; nameIn.value=name; nameIn.style.cssText=s; nameIn.style.color='#f5edd8'; nameIn.style.webkitTextFillColor='#f5edd8';
+  var btn=document.createElement('button'); btn.className='remove-btn'; btn.textContent='x'; btn.addEventListener('click',function(){ div.remove(); });
+  row1.appendChild(nameIn); row1.appendChild(btn);
+
+  // Row 2: total qty + unit
+  var row2=document.createElement('div'); row2.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:6px';
+  var qtyIn=document.createElement('input'); qtyIn.type='number'; qtyIn.placeholder='Total qty'; qtyIn.min='0'; qtyIn.step='0.5'; qtyIn.value=qty; qtyIn.style.cssText=s;
+  var unitSel=document.createElement('select'); unitSel.style.cssText=s;
+  ['bags','bu'].forEach(function(u){ var o=document.createElement('option'); o.value=u; o.textContent=u==='bags'?'Bags':'Bushels'; if(u===seedUnit) o.selected=true; unitSel.appendChild(o); });
+  row2.appendChild(qtyIn); row2.appendChild(unitSel);
+
+  // Row 3: qty/ac + $/unit
+  var row3=document.createElement('div'); row3.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:6px';
+  var acIn=document.createElement('input'); acIn.type='number'; acIn.placeholder='Qty per acre'; acIn.min='0'; acIn.step='0.001'; acIn.value=qtyPerAc; acIn.style.cssText=s;
+  var ucIn=document.createElement('input'); ucIn.type='number'; ucIn.placeholder='$/bag'; ucIn.min='0'; ucIn.step='0.01'; ucIn.value=unitCost; ucIn.style.cssText=s;
+  unitSel.addEventListener('change',function(){ ucIn.placeholder=unitSel.value==='bu'?'$/bu':'$/bag'; });
+  row3.appendChild(acIn); row3.appendChild(ucIn);
+
+  // Row 4: total $
+  var row4=document.createElement('div');
+  var totIn=document.createElement('input'); totIn.type='number'; totIn.placeholder='Total $'; totIn.min='0'; totIn.step='0.01'; totIn.value=cost; totIn.style.cssText=t;
+  row4.appendChild(totIn);
+
+  function calcFromPerAc() {
+    var acres=parseFloat((document.getElementById('i-acres')||{}).value)||0;
+    var ac=parseFloat(acIn.value)||0;
+    if (ac&&acres){ qtyIn.value=(ac*acres).toFixed(2); calcTotal(); }
+  }
+  function calcTotal() {
+    var qty2=parseFloat(qtyIn.value)||0; var uc=parseFloat(ucIn.value)||0;
+    if (qty2&&uc) totIn.value=(qty2*uc).toFixed(2);
+  }
+  acIn.addEventListener('input',calcFromPerAc);
+  qtyIn.addEventListener('input',calcTotal);
+  ucIn.addEventListener('input',calcTotal);
+
+  div.appendChild(row1); div.appendChild(row2); div.appendChild(row3); div.appendChild(row4);
+  document.getElementById('seed-list').appendChild(div);
+}
+
+function addFertRow(type, amount, fertUnit, unitCost, cost, amountPerAc) {
+  type = type||''; amount = amount||''; fertUnit = fertUnit||'lb';
+  unitCost = unitCost||''; cost = cost||''; amountPerAc = amountPerAc||'';
+  var s = inputS(); var t = totalS();
+  var div = document.createElement('div');
+  div.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px;background:rgba(0,0,0,0.2);border-radius:6px;border:1px solid rgba(125,184,212,0.15)';
+
+  // Row 1: type + remove
+  var row1 = document.createElement('div');
+  row1.style.cssText = 'display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center';
+  var typeTypes = ['Urea','Fish','E-Phos','DAP','MAP','Potash','AMS','Anhydrous','Sugar','Calcium','Other'];
+  var typeSel = document.createElement('select'); typeSel.style.cssText = s;
+  var blankOpt = document.createElement('option'); blankOpt.value=''; blankOpt.textContent='Select type...';
+  typeSel.appendChild(blankOpt);
+  typeTypes.forEach(function(tp){ var o=document.createElement('option'); o.value=tp; o.textContent=tp; if(tp===type) o.selected=true; typeSel.appendChild(o); });
+  var btn = document.createElement('button'); btn.className='remove-btn'; btn.textContent='x';
+  btn.addEventListener('click', function(){ div.remove(); });
+  row1.appendChild(typeSel); row1.appendChild(btn);
+
+  // Row 2: Total qty + unit
+  var row2 = document.createElement('div');
+  row2.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px';
+  var amtIn = document.createElement('input');
+  amtIn.type='number'; amtIn.placeholder='Total qty'; amtIn.min='0'; amtIn.step='0.1'; amtIn.value=amount; amtIn.style.cssText=s;
+  var fertUnits = ['lb','kg','L','gal','ton','tonne'];
+  var unitSel = document.createElement('select'); unitSel.style.cssText=s;
+  fertUnits.forEach(function(u){ var o=document.createElement('option'); o.value=u; o.textContent=u; if(u===fertUnit) o.selected=true; unitSel.appendChild(o); });
+  row2.appendChild(amtIn); row2.appendChild(unitSel);
+
+  // Row 3: Qty/ac + $/unit
+  var row3 = document.createElement('div');
+  row3.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px';
+  var acIn = document.createElement('input');
+  acIn.type='number'; acIn.placeholder='Qty per acre'; acIn.min='0'; acIn.step='0.001'; acIn.value=amountPerAc; acIn.style.cssText=s;
+  var ucIn = document.createElement('input');
+  ucIn.type='number'; ucIn.placeholder='$/unit'; ucIn.min='0'; ucIn.step='0.001'; ucIn.value=unitCost; ucIn.style.cssText=s;
+  unitSel.addEventListener('change', function(){ ucIn.placeholder='$/'+unitSel.value; });
+  row3.appendChild(acIn); row3.appendChild(ucIn);
+
+  // Row 4: Total $
+  var row4 = document.createElement('div');
+  var totIn = document.createElement('input');
+  totIn.type='number'; totIn.placeholder='Total $'; totIn.min='0'; totIn.step='0.01'; totIn.value=cost; totIn.style.cssText=t;
+  row4.appendChild(totIn);
+
+  // Calc logic: qty/ac fills total qty; either triggers total $
+  function calcTotal() {
+    var acres = parseFloat((document.getElementById('i-acres')||{}).value)||0;
+    var ac  = parseFloat(acIn.value)||0;
+    var tot = parseFloat(amtIn.value)||0;
+    // If qty/ac entered and acres known, fill total qty
+    if (ac && acres && !amtIn.value) amtIn.value = (ac*acres).toFixed(2);
+    var qty = parseFloat(amtIn.value)||0;
+    var uc  = parseFloat(ucIn.value)||0;
+    if (qty && uc) totIn.value = (qty*uc).toFixed(2);
+  }
+  function calcFromPerAc() {
+    var acres = parseFloat((document.getElementById('i-acres')||{}).value)||0;
+    var ac = parseFloat(acIn.value)||0;
+    if (ac && acres) { amtIn.value=(ac*acres).toFixed(2); calcTotal(); }
+  }
+  acIn.addEventListener('input', calcFromPerAc);
+  amtIn.addEventListener('input', calcTotal);
+  ucIn.addEventListener('input', calcTotal);
+
+  div.appendChild(row1); div.appendChild(row2); div.appendChild(row3); div.appendChild(row4);
+  document.getElementById('fert-list').appendChild(div);
+}
+
+function addChemRow(name, qty, chemUnit, unitCost, cost, qtyPerAc) {
+  name=name||''; qty=qty||''; chemUnit=chemUnit||'jug';
+  unitCost=unitCost||''; cost=cost||''; qtyPerAc=qtyPerAc||'';
+  var s=inputS(); var t=totalS();
+  var div=document.createElement('div');
+  div.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px;background:rgba(0,0,0,0.2);border-radius:6px;border:1px solid rgba(184,74,63,0.15)';
+
+  // Row 1: name + remove
+  var row1=document.createElement('div'); row1.style.cssText='display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center';
+  var nameIn=document.createElement('input'); nameIn.type='text'; nameIn.placeholder='Chemical name'; nameIn.value=name; nameIn.style.cssText=s; nameIn.style.color='#f5edd8'; nameIn.style.webkitTextFillColor='#f5edd8';
+  var btn=document.createElement('button'); btn.className='remove-btn'; btn.textContent='x'; btn.addEventListener('click',function(){ div.remove(); });
+  row1.appendChild(nameIn); row1.appendChild(btn);
+
+  // Row 2: total qty + unit
+  var row2=document.createElement('div'); row2.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:6px';
+  var qtyIn=document.createElement('input'); qtyIn.type='number'; qtyIn.placeholder='Total qty'; qtyIn.min='0'; qtyIn.step='0.1'; qtyIn.value=qty; qtyIn.style.cssText=s;
+  var chemUnits=['jug','L','gal','kg','lb'];
+  var unitSel=document.createElement('select'); unitSel.style.cssText=s;
+  chemUnits.forEach(function(u){ var o=document.createElement('option'); o.value=u; o.textContent=u; if(u===chemUnit) o.selected=true; unitSel.appendChild(o); });
+  row2.appendChild(qtyIn); row2.appendChild(unitSel);
+
+  // Row 3: qty/ac + $/unit
+  var row3=document.createElement('div'); row3.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:6px';
+  var acIn=document.createElement('input'); acIn.type='number'; acIn.placeholder='Qty per acre'; acIn.min='0'; acIn.step='0.001'; acIn.value=qtyPerAc; acIn.style.cssText=s;
+  var ucIn=document.createElement('input'); ucIn.type='number'; ucIn.placeholder='$/unit'; ucIn.min='0'; ucIn.step='0.001'; ucIn.value=unitCost; ucIn.style.cssText=s;
+  unitSel.addEventListener('change',function(){ ucIn.placeholder='$/'+unitSel.value; });
+  row3.appendChild(acIn); row3.appendChild(ucIn);
+
+  // Row 4: total $
+  var row4=document.createElement('div');
+  var totIn=document.createElement('input'); totIn.type='number'; totIn.placeholder='Total $'; totIn.min='0'; totIn.step='0.01'; totIn.value=cost; totIn.style.cssText=t;
+  row4.appendChild(totIn);
+
+  function calcFromPerAc() {
+    var acres=parseFloat((document.getElementById('i-acres')||{}).value)||0;
+    var ac=parseFloat(acIn.value)||0;
+    if (ac&&acres){ qtyIn.value=(ac*acres).toFixed(2); calcTotal(); }
+  }
+  function calcTotal() {
+    var qty2=parseFloat(qtyIn.value)||0; var uc=parseFloat(ucIn.value)||0;
+    if (qty2&&uc) totIn.value=(qty2*uc).toFixed(2);
+  }
+  acIn.addEventListener('input',calcFromPerAc);
+  qtyIn.addEventListener('input',calcTotal);
+  ucIn.addEventListener('input',calcTotal);
+
+  div.appendChild(row1); div.appendChild(row2); div.appendChild(row3); div.appendChild(row4);
+  document.getElementById('chem-list').appendChild(div);
+}
+
+function addSaleRow(date, qty, price, buyer, unit) {
+  date = date || ''; qty = qty || ''; price = price || ''; buyer = buyer || ''; unit = unit || 'bu';
+  var s = inputS();
+  var div = document.createElement('div');
+  div.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px;background:rgba(0,0,0,0.2);border-radius:6px;border:1px solid rgba(200,146,42,0.2)';
+
+  var row1 = document.createElement('div');
+  row1.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center';
+  var dateIn = document.createElement('input');
+  dateIn.type = 'date'; dateIn.value = date; dateIn.style.cssText = s;
+  var unitSel = document.createElement('select'); unitSel.style.cssText = s + ';padding:8px 6px';
+  var buOpt = document.createElement('option'); buOpt.value = 'bu'; buOpt.textContent = 'Bushels'; if (unit==='bu') buOpt.selected = true;
+  var tOpt  = document.createElement('option'); tOpt.value  = 't';  tOpt.textContent  = 'Tonnes';  if (unit==='t')  tOpt.selected  = true;
+  unitSel.appendChild(buOpt); unitSel.appendChild(tOpt);
+  var removeBtn = document.createElement('button');
+  removeBtn.className = 'remove-btn'; removeBtn.textContent = 'x';
+  removeBtn.addEventListener('click', function(){ div.remove(); });
+  row1.appendChild(dateIn); row1.appendChild(unitSel); row1.appendChild(removeBtn);
+
+  var row2 = document.createElement('div');
+  row2.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px';
+  var qtyIn = document.createElement('input');
+  qtyIn.type = 'number'; qtyIn.placeholder = unit==='t' ? 'Tonnes' : 'Bushels';
+  qtyIn.min = '0'; qtyIn.step = '0.1'; qtyIn.value = qty; qtyIn.style.cssText = s;
+  var priceIn = document.createElement('input');
+  priceIn.type = 'number'; priceIn.placeholder = unit==='t' ? '$/t' : '$/bu';
+  priceIn.min = '0'; priceIn.step = '0.001'; priceIn.value = price; priceIn.style.cssText = s;
+  unitSel.addEventListener('change', function(){
+    var isTonne = unitSel.value === 't';
+    qtyIn.placeholder   = isTonne ? 'Tonnes'  : 'Bushels';
+    priceIn.placeholder = isTonne ? '$/t' : '$/bu';
+  });
+  row2.appendChild(qtyIn); row2.appendChild(priceIn);
+
+  div.appendChild(row1); div.appendChild(row2);
+  document.getElementById('sale-list').appendChild(div);
+}
+
+function updateSalePlaceholder(sel, qtyIn, priceIn) {
+  var isTonne = sel.value === 't';
+  if (qtyIn && priceIn) {
+    qtyIn.placeholder   = isTonne ? 'Tonnes'  : 'Bushels';
+    priceIn.placeholder = isTonne ? '$/t' : '$/bu';
+  }
+}
+
+function getRows(containerId, fields) {
+  var rows = [];
+  var container = document.getElementById(containerId);
+  Array.from(container.children).forEach(function(child) {
+    var inputs = child.querySelectorAll('input, select');
+    var row = {};
+    fields.forEach(function(f, i){ row[f] = (inputs[i] && inputs[i].value) || ''; });
+    if (Object.values(row).some(function(v){ return v; })) rows.push(row);
+  });
+  return rows;
+}
+
+function getBuPerTonne(cropName) {
+  if (!cropName || !allData) return 36.744;
+  var c = (allData.crops || []).find(function(c){ return c.name.toLowerCase() === cropName.toLowerCase(); });
+  return c ? c.buPerTonne : 36.744;
+}
+
+function getCropOptions(selected) {
+  selected = selected || '';
+  return (allData ? allData.crops || [] : []).map(function(c){
+    return '<option value="' + c.name + '"' + (c.name===selected?' selected':'') + '>' + c.name + '</option>';
+  }).join('');
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function fmt$(n) { return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtBu(n) { return Number(n).toLocaleString() + ' bu'; }
+
+// ===================== INPUT MODAL =====================
+function openInputModal(id) {
+  editingInputId = id || null;
+  document.getElementById('seed-list').innerHTML = '';
+  document.getElementById('fert-list').innerHTML = '';
+  document.getElementById('chem-list').innerHTML = '';
+  var today = new Date().toISOString().slice(0,10);
+  if (id) {
+    var rec = data.inputs.find(function(r){ return r.id === id; });
+    document.getElementById('inputModalTitle').textContent = 'Edit Field Record';
+    document.getElementById('i-field').value = rec.field;
+    document.getElementById('i-date').value  = rec.date;
+    document.getElementById('i-acres').value = rec.acres;
+    document.getElementById('i-notes').value = rec.notes || '';
+    (rec.seed||[]).forEach(function(s){ addSeedRow(s.name, s.qty, s.seedUnit||'bags', s.unitCost, s.cost, s.qtyPerAc); });
+    (rec.fert||[]).forEach(function(f){ addFertRow(f.type, f.amount, f.fertUnit||'lb', f.unitCost, f.cost, f.amountPerAc); });
+    (rec.chem||[]).forEach(function(c){ addChemRow(c.name, c.qty, c.chemUnit||'jug', c.unitCost, c.cost, c.qtyPerAc); });
+  } else {
+    document.getElementById('inputModalTitle').textContent = 'New Field Record';
+    document.getElementById('i-field').value = '';
+    document.getElementById('i-date').value  = today;
+    document.getElementById('i-acres').value = '';
+    document.getElementById('i-notes').value = '';
+    addFertRow('Urea'); addFertRow('Fish'); addFertRow('E-Phos');
+  }
+  document.getElementById('inputModal').classList.add('open');
+}
+
+var editingInputId   = null;
+var editingHarvestId = null;
+
+function closeInputModal() { document.getElementById('inputModal').classList.remove('open'); }
+
+function saveInputRecord() {
+  var field = document.getElementById('i-field').value.trim();
+  if (!field) { alert('Please enter a field name.'); return; }
+  var seed = getRows('seed-list', ['name','qty','seedUnit','qtyPerAc','unitCost','cost']);
+  var fert = getRows('fert-list', ['type','amount','fertUnit','amountPerAc','unitCost','cost']);
+  var chem = getRows('chem-list', ['name','qty','chemUnit','unitCost','cost']);
+  var totalCost = seed.concat(fert).concat(chem).reduce(function(a,r){ return a + (parseFloat(r.cost)||0); }, 0);
+  var rec = {
+    id: editingInputId || uid(), field: field,
+    date:  document.getElementById('i-date').value,
+    acres: parseFloat(document.getElementById('i-acres').value) || 0,
+    notes: document.getElementById('i-notes').value,
+    seed: seed, fert: fert, chem: chem, totalCost: totalCost
+  };
+  var inputs = data.inputs.slice();
+  if (editingInputId) {
+    var idx = inputs.findIndex(function(r){ return r.id === editingInputId; });
+    inputs[idx] = rec;
+  } else { inputs.push(rec); }
+  data.inputs = inputs;
+  save(); closeInputModal(); renderInputs();
+}
+
+function deleteInput(id) {
+  if (!confirm('Delete this field record?')) return;
+  data.inputs = data.inputs.filter(function(r){ return r.id !== id; });
+  save(); renderInputs();
+}
+
+// ===================== HARVEST MODAL =====================
+function openHarvestModal(id) {
+  editingHarvestId = id || null;
+  document.getElementById('sale-list').innerHTML = '';
+  var today = new Date().toISOString().slice(0,10);
+  var cropSel = document.getElementById('h-crop');
+  cropSel.innerHTML = '<option value="">Select crop...</option>' + getCropOptions();
+  if (id) {
+    var rec = data.harvests.find(function(r){ return r.id === id; });
+    document.getElementById('harvestModalTitle').textContent = 'Edit Harvest';
+    document.getElementById('h-field').value   = rec.field;
+    document.getElementById('h-date').value    = rec.date;
+    document.getElementById('h-bushels').value = rec.bushels;
+    document.getElementById('h-notes').value   = rec.notes || '';
+    cropSel.value = rec.crop;
+    (rec.sales||[]).forEach(function(s){
+      addSaleRow(s.date, s.unit==='t' ? s.qty : s.bushels, s.price, s.buyer, s.unit||'bu');
+    });
+  } else {
+    document.getElementById('harvestModalTitle').textContent = 'New Harvest Record';
+    document.getElementById('h-field').value   = '';
+    document.getElementById('h-date').value    = today;
+    document.getElementById('h-bushels').value = '';
+    document.getElementById('h-notes').value   = '';
+  }
+  document.getElementById('harvestModal').classList.add('open');
+}
+
+function closeHarvestModal() { document.getElementById('harvestModal').classList.remove('open'); }
+
+function saveHarvestRecord() {
+  var field = document.getElementById('h-field').value.trim();
+  if (!field) { alert('Please enter a field name.'); return; }
+  var bushels    = parseFloat(document.getElementById('h-bushels').value) || 0;
+  var crop       = document.getElementById('h-crop').value;
+  var buPerTonne = getBuPerTonne(crop);
+  var rawSales   = getRows('sale-list', ['date','unit','qty','price','buyer']);
+  var sales = rawSales.map(function(s) {
+    var unit  = s.unit || 'bu'; var qty = parseFloat(s.qty) || 0; var price = parseFloat(s.price) || 0;
+    return { date: s.date, unit: unit, qty: qty, price: price, buyer: s.buyer||'', bushels: unit==='t' ? qty*buPerTonne : qty };
+  });
+  var soldBu       = sales.reduce(function(a,s){ return a + s.bushels; }, 0);
+  var totalRevenue = sales.reduce(function(a,s){ return a + (s.unit==='t' ? s.qty*s.price : s.bushels*s.price); }, 0);
+  var rec = {
+    id: editingHarvestId || uid(), field: field,
+    date: document.getElementById('h-date').value,
+    bushels: bushels, crop: crop, notes: document.getElementById('h-notes').value,
+    sales: sales, soldBu: soldBu, totalRevenue: totalRevenue, remaining: bushels - soldBu
+  };
+  var harvests = data.harvests.slice();
+  if (editingHarvestId) {
+    var idx = harvests.findIndex(function(r){ return r.id === editingHarvestId; });
+    harvests[idx] = rec;
+  } else { harvests.push(rec); }
+  data.harvests = harvests;
+  save(); closeHarvestModal(); renderHarvests();
+}
+
+function deleteHarvest(id) {
+  if (!confirm('Delete this harvest record?')) return;
+  data.harvests = data.harvests.filter(function(r){ return r.id !== id; });
+  save(); renderHarvests();
+}
+
+// ===================== SELL MODAL =====================
+function openSellModal(harvestId) {
+  var rec = data.harvests.find(function(r){ return r.id === harvestId; });
+  document.getElementById('sell-harvest-id').value = harvestId;
+  document.getElementById('sell-qty').value   = '';
+  document.getElementById('sell-price').value = '';
+  document.getElementById('sell-unit').value  = 'bu';
+  document.getElementById('sell-date').value  = new Date().toISOString().slice(0,10);
+  document.getElementById('sell-buyer').value = '';
+  document.getElementById('sell-equiv').textContent = '';
+  var cl = document.getElementById('sell-crop-label');
+  if (rec && rec.crop) {
+    cl.textContent = rec.crop + ' — ' + getBuPerTonne(rec.crop) + ' bu/t';
+    cl.style.display = 'block';
+  } else { cl.style.display = 'none'; }
+  updateSellUnit();
+  document.getElementById('sellModal').classList.add('open');
+  ['sell-qty','sell-price','sell-unit'].forEach(function(id){
+    document.getElementById(id).addEventListener('input', showSellEquiv);
+    document.getElementById(id).addEventListener('change', showSellEquiv);
+  });
+}
+
+function updateSellUnit() {
+  var isTonne = document.getElementById('sell-unit').value === 't';
+  document.getElementById('sell-qty-label').textContent   = isTonne ? 'Tonnes Sold' : 'Bushels Sold';
+  document.getElementById('sell-price-label').textContent = isTonne ? 'Price per Tonne ($/t)' : 'Price per Bushel ($/bu)';
+  document.getElementById('sell-qty').placeholder   = isTonne ? 'e.g. 27.2' : 'e.g. 1000';
+  document.getElementById('sell-price').placeholder = isTonne ? 'e.g. 220.00' : 'e.g. 4.85';
+  showSellEquiv();
+}
+
+function showSellEquiv() {
+  var hid = document.getElementById('sell-harvest-id').value;
+  var rec = data.harvests.find(function(r){ return r.id === hid; });
+  var bpt = getBuPerTonne(rec ? rec.crop : '');
+  var isTonne = document.getElementById('sell-unit').value === 't';
+  var qty   = parseFloat(document.getElementById('sell-qty').value)   || 0;
+  var price = parseFloat(document.getElementById('sell-price').value) || 0;
+  var equiv = document.getElementById('sell-equiv');
+  if (!qty) { equiv.textContent = ''; return; }
+  var parts = [];
+  parts.push(isTonne ? ('≈ ' + (qty*bpt).toLocaleString(undefined,{maximumFractionDigits:1}) + ' bu')
+                     : ('≈ ' + (qty/bpt).toLocaleString(undefined,{maximumFractionDigits:2}) + ' t'));
+  if (qty * price > 0) parts.push('Total: ' + fmt$(qty * price));
+  equiv.textContent = parts.join('  •  ');
+}
+
+function closeSellModal() { document.getElementById('sellModal').classList.remove('open'); }
+
+function saveSale() {
+  var id  = document.getElementById('sell-harvest-id').value;
+  var harvests = data.harvests.slice();
+  var rec = harvests.find(function(r){ return r.id === id; });
+  var unit  = document.getElementById('sell-unit').value;
+  var qty   = parseFloat(document.getElementById('sell-qty').value)   || 0;
+  var price = parseFloat(document.getElementById('sell-price').value) || 0;
+  if (qty <= 0) { alert('Enter amount sold.'); return; }
+  var bpt     = getBuPerTonne(rec.crop);
+  var bushels = unit === 't' ? qty * bpt : qty;
+  rec.sales = (rec.sales || []).concat([{
+    date: document.getElementById('sell-date').value,
+    unit: unit, qty: qty, price: price, bushels: bushels,
+    buyer: document.getElementById('sell-buyer').value
+  }]);
+  rec.soldBu       = rec.sales.reduce(function(a,s){ return a + s.bushels; }, 0);
+  rec.totalRevenue = rec.sales.reduce(function(a,s){ return a + (s.unit==='t' ? s.qty*s.price : s.bushels*s.price); }, 0);
+  rec.remaining    = rec.bushels - rec.soldBu;
+  data.harvests = harvests;
+  save(); closeSellModal(); renderHarvests();
+}
+
+// ===================== RENDER INPUTS =====================
+function renderInputs() {
+  var list = document.getElementById('inputs-list');
+  if (!list) return;
+  if (!data.inputs.length) {
+    list.innerHTML = '<div class="empty-state"><span class="icon">🌾</span>No field input records yet.<br>Click "Add Field Record" to get started.</div>';
+    return;
+  }
+  list.innerHTML = data.inputs.slice().reverse().map(function(rec) {
+    var seedChips = (rec.seed||[]).filter(function(s){ return s.name; }).map(function(s){
+      return '<span class="chip seed">🌱 ' + s.name + (s.qty?' — '+s.qty+' '+(s.seedUnit||'bags'):'') + (s.cost?' ('+fmt$(s.cost)+')':'') + '</span>';
+    }).join('');
+    var fertChips = (rec.fert||[]).filter(function(f){ return f.type; }).map(function(f){
+      return '<span class="chip fert">🧪 ' + f.type + (f.amount?' — '+f.amount+' '+(f.fertUnit||'lb'):'') + (f.cost?' ('+fmt$(f.cost)+')':'') + '</span>';
+    }).join('');
+    var chemChips = (rec.chem||[]).filter(function(c){ return c.name; }).map(function(c){
+      return '<span class="chip chem">⚗️ ' + c.name + (c.qty?' — '+c.qty+' '+(c.chemUnit||'jug'):'') + (c.cost?' ('+fmt$(c.cost)+')':'') + '</span>';
+    }).join('');
+    return '<div class="card">'
+      + '<div class="card-header">'
+      + '<div><div class="card-field">' + rec.field + (rec.acres?' — '+rec.acres+' ac':'') + '</div>'
+      + '<div class="card-date">' + (rec.date||'No date') + '</div></div>'
+      + '<div class="card-actions">'
+      + '<span class="chip cost" style="align-self:center">' + fmt$(rec.totalCost) + '</span>'
+      + '<button class="btn btn-sm" onclick="openInputModal(\'' + rec.id + '\')">Edit</button>'
+      + '<button class="btn btn-sm btn-danger" onclick="deleteInput(\'' + rec.id + '\')">Delete</button>'
+      + '</div></div>'
+      + '<div class="chip-row">'
+      + (seedChips + fertChips + chemChips || '<span style="color:rgba(245,237,216,0.3);font-size:0.8rem">No inputs recorded</span>')
+      + '</div>'
+      + (rec.notes ? '<div style="margin-top:10px;font-size:0.82rem;color:rgba(245,237,216,0.5)">' + rec.notes + '</div>' : '')
+      + '</div>';
+  }).join('');
+}
+
+// ===================== RENDER HARVESTS =====================
+function renderHarvests() {
+  var list = document.getElementById('harvest-list');
+  if (!list) return;
+  if (!data.harvests.length) {
+    list.innerHTML = '<div class="empty-state"><span class="icon">🚜</span>No harvest records yet.<br>Click "Add Harvest" to get started.</div>';
+    return;
+  }
+  list.innerHTML = data.harvests.slice().reverse().map(function(rec) {
+    var pct = rec.bushels > 0 ? Math.min(100, ((rec.soldBu||0) / rec.bushels) * 100) : 0;
+    var bpt = getBuPerTonne(rec.crop);
+    var salesHTML = (rec.sales||[]).map(function(s) {
+      var isTonne  = s.unit === 't';
+      var dispQty  = isTonne ? (s.qty||0).toLocaleString(undefined,{maximumFractionDigits:2}) + ' t'
+                             : (s.bushels||0).toLocaleString(undefined,{maximumFractionDigits:1}) + ' bu';
+      var revenue  = isTonne ? (s.qty||0)*(s.price||0) : (s.bushels||0)*(s.price||0);
+      return '<div class="sale-item">'
+        + '<div><span style="font-family:IBM Plex Mono,monospace;font-size:0.8rem;color:#f2d98a">' + (s.buyer||'Unknown buyer') + '</span>'
+        + '<div style="font-size:0.75rem;color:rgba(245,237,216,0.4);margin-top:2px">' + (s.date||'') + '</div></div>'
+        + '<div style="text-align:right">'
+        + '<div style="font-family:IBM Plex Mono,monospace;font-size:0.85rem;color:#a8d4e8">' + dispQty + '</div>'
+        + '<div style="font-size:0.75rem;color:rgba(245,237,216,0.5)">' + (s.price?(isTonne?fmt$(s.price)+'/t':fmt$(s.price)+'/bu'):'') + (revenue>0?' = '+fmt$(revenue):'') + '</div>'
+        + '</div></div>';
+    }).join('');
+    var remaining = rec.remaining != null ? rec.remaining : rec.bushels;
+    return '<div class="card">'
+      + '<div class="card-header"><div>'
+      + '<div class="card-field">' + rec.field + (rec.crop?' — '+rec.crop:'') + '</div>'
+      + '<div class="card-date">' + (rec.date||'No date') + '</div>'
+      + '<div style="margin-top:6px">'
+      + '<span class="remaining-badge">📦 ' + fmtBu(Math.max(0,remaining)) + ' remaining</span>'
+      + '<span class="sold-badge">✓ ' + fmtBu(rec.soldBu||0) + ' sold</span>'
+      + '</div></div>'
+      + '<div class="card-actions"><div style="text-align:right">'
+      + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.8rem;color:#c8922a;line-height:1">' + fmtBu(rec.bushels) + '</div>'
+      + '<div style="font-family:IBM Plex Mono,monospace;font-size:0.7rem;color:rgba(245,237,216,0.4)">TOTAL HARVESTED</div>'
+      + (rec.totalRevenue ? '<div style="font-family:IBM Plex Mono,monospace;font-size:0.85rem;color:#a8d99e;margin-top:4px">' + fmt$(rec.totalRevenue) + ' revenue</div>' : '')
+      + '</div></div></div>'
+      + '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>'
+      + '<div style="font-family:IBM Plex Mono,monospace;font-size:0.68rem;color:rgba(245,237,216,0.35);margin-top:5px">' + pct.toFixed(1) + '% sold</div>'
+      + salesHTML
+      + '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">'
+      + '<button class="btn btn-sm btn-green" onclick="openSellModal(\'' + rec.id + '\')">+ Record Sale</button>'
+      + '<button class="btn btn-sm" onclick="openHarvestModal(\'' + rec.id + '\')">Edit</button>'
+      + '<button class="btn btn-sm btn-danger" onclick="deleteHarvest(\'' + rec.id + '\')">Delete</button>'
+      + '</div>'
+      + (rec.notes ? '<div style="margin-top:10px;font-size:0.82rem;color:rgba(245,237,216,0.5)">' + rec.notes + '</div>' : '')
+      + '</div>';
+  }).join('');
+}
+
+// ===================== RENDER SUMMARY =====================
+function renderSummary() {
+  if (!allData) return;
+  var totalInputCost = data.inputs.reduce(function(a,r){  return a+(r.totalCost||0); }, 0);
+  var totalBushels   = data.harvests.reduce(function(a,r){ return a+(r.bushels||0); }, 0);
+  var totalSold      = data.harvests.reduce(function(a,r){ return a+(r.soldBu||0); }, 0);
+  var totalRevenue   = data.harvests.reduce(function(a,r){ return a+(r.totalRevenue||0); }, 0);
+  var totalAcres     = data.inputs.reduce(function(a,r){  return a+(r.acres||0); }, 0);
+  var net            = totalRevenue - totalInputCost;
+
+  document.getElementById('summary-stats').innerHTML =
+    '<div class="stat-card"><div class="stat-num">' + totalAcres.toLocaleString() + '</div><div class="stat-label">Acres</div></div>'
+    + '<div class="stat-card"><div class="stat-num" style="color:#e8a8a3">' + fmt$(totalInputCost) + '</div><div class="stat-label">Input Cost</div></div>'
+    + '<div class="stat-card"><div class="stat-num">' + totalBushels.toLocaleString() + '</div><div class="stat-label">Bu Harvested</div></div>'
+    + '<div class="stat-card"><div class="stat-num" style="color:#a8d99e">' + fmt$(totalRevenue) + '</div><div class="stat-label">Revenue</div></div>'
+    + '<div class="stat-card"><div class="stat-num" style="color:' + (net>=0?'#a8d99e':'#e8a8a3') + '">' + (net>=0?'+':'') + fmt$(net) + '</div><div class="stat-label">Net</div></div>'
+    + '<div class="stat-card"><div class="stat-num" style="color:#a8d4e8">' + (totalBushels-totalSold).toLocaleString() + '</div><div class="stat-label">Bu Remaining</div></div>';
+
+  var allFields = [];
+  data.inputs.concat(data.harvests).forEach(function(r){ if (r.field && allFields.indexOf(r.field)<0) allFields.push(r.field); });
+  allFields.sort();
+
+  if (!allFields.length) {
+    document.getElementById('summary-details').innerHTML = '<div class="empty-state"><span class="icon">📊</span>Add records to see a field breakdown.</div>';
+    return;
+  }
+
+  var html = '<div style="font-family:Bebas Neue,sans-serif;font-size:1.5rem;color:#c8922a;letter-spacing:2px;margin-bottom:14px;margin-top:8px">By Field</div>';
+  allFields.forEach(function(field) {
+    var inputs   = data.inputs.filter(function(r){   return r.field === field; });
+    var harvests = data.harvests.filter(function(r){ return r.field === field; });
+    var acres     = inputs.reduce(function(a,r){   return a+(r.acres||0); }, 0);
+    var inputCost = inputs.reduce(function(a,r){   return a+(r.totalCost||0); }, 0);
+    var bu        = harvests.reduce(function(a,r){ return a+(r.bushels||0); }, 0);
+    var revenue   = harvests.reduce(function(a,r){ return a+(r.totalRevenue||0); }, 0);
+    var remaining = harvests.reduce(function(a,r){ return a+Math.max(0, r.remaining!=null?r.remaining:r.bushels); }, 0);
+    var fldNet    = revenue - inputCost;
+    var costPerAc = acres > 0 ? inputCost/acres : 0;
+    var buPerAc   = acres > 0 ? bu/acres : 0;
+
+    var allSeed = []; inputs.forEach(function(r){ (r.seed||[]).forEach(function(s){ if(s.name) allSeed.push(s); }); });
+    var seedRows = allSeed.length ? allSeed.map(function(s){
+      return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(200,146,42,0.1)">'
+        + '<span style="color:rgba(245,237,216,0.7)">' + s.name + (s.qty?' — '+s.qty+' '+(s.seedUnit||'bags'):'') + '</span>'
+        + '<span style="font-family:IBM Plex Mono,monospace;color:#a8d99e;font-size:0.8rem">' + (s.cost?fmt$(s.cost):'') + '</span></div>';
+    }).join('') : '<div style="color:rgba(245,237,216,0.3);font-size:0.8rem">None</div>';
+
+    var fertMap = {}; inputs.forEach(function(r){ (r.fert||[]).forEach(function(f){ if(f.type) fertMap[f.type]=(fertMap[f.type]||0)+(parseFloat(f.cost)||0); }); });
+    var fertRows = Object.keys(fertMap).length ? Object.keys(fertMap).map(function(type){
+      return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(125,184,212,0.1)">'
+        + '<span style="color:rgba(245,237,216,0.7)">' + type + '</span>'
+        + '<span style="font-family:IBM Plex Mono,monospace;color:#a8d4e8;font-size:0.8rem">' + fmt$(fertMap[type]) + '</span></div>';
+    }).join('') : '<div style="color:rgba(245,237,216,0.3);font-size:0.8rem">None</div>';
+
+    var chemMap = {}; inputs.forEach(function(r){ (r.chem||[]).forEach(function(c){ if(c.name) chemMap[c.name]=(chemMap[c.name]||0)+(parseFloat(c.cost)||0); }); });
+    var chemRows = Object.keys(chemMap).length ? Object.keys(chemMap).map(function(name){
+      return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(184,74,63,0.1)">'
+        + '<span style="color:rgba(245,237,216,0.7)">' + name + '</span>'
+        + '<span style="font-family:IBM Plex Mono,monospace;color:#e8a8a3;font-size:0.8rem">' + fmt$(chemMap[name]) + '</span></div>';
+    }).join('') : '<div style="color:rgba(245,237,216,0.3);font-size:0.8rem">None</div>';
+
+    var harvestRows = harvests.length ? harvests.map(function(h) {
+      var salesDetail = (h.sales||[]).length ? (h.sales||[]).map(function(s){
+        var isTonne = s.unit === 't';
+        var dispQty = isTonne ? (s.qty||0).toLocaleString(undefined,{maximumFractionDigits:2})+' t' : (s.bushels||0).toLocaleString(undefined,{maximumFractionDigits:0})+' bu';
+        var rev = isTonne ? (s.qty||0)*(s.price||0) : (s.bushels||0)*(s.price||0);
+        return '<div style="display:flex;justify-content:space-between;padding:3px 0 3px 12px;font-size:0.78rem;color:rgba(245,237,216,0.5)">'
+          + '<span>' + (s.buyer||'Unknown') + (s.date?' · '+s.date:'') + ' · ' + dispQty + ' @ ' + (isTonne?fmt$(s.price||0)+'/t':fmt$(s.price||0)+'/bu') + '</span>'
+          + '<span style="color:#a8d99e;font-family:IBM Plex Mono,monospace">' + fmt$(rev) + '</span></div>';
+      }).join('') : '<div style="padding:3px 0 3px 12px;font-size:0.78rem;color:rgba(245,237,216,0.3)">No sales recorded</div>';
+      var hRem = h.remaining != null ? h.remaining : h.bushels;
+      return '<div style="padding:6px 0;border-bottom:1px solid rgba(200,146,42,0.1)">'
+        + '<div style="display:flex;justify-content:space-between">'
+        + '<span style="color:rgba(245,237,216,0.8)">' + (h.crop||'Unknown') + ' · ' + (h.bushels||0).toLocaleString() + ' bu' + (h.date?' · '+h.date:'') + '</span>'
+        + '<span class="remaining-badge" style="margin:0">' + fmtBu(Math.max(0,hRem)) + ' left</span>'
+        + '</div>' + salesDetail + '</div>';
+    }).join('') : '<div style="color:rgba(245,237,216,0.3);font-size:0.8rem">No harvest recorded</div>';
+
+    var subHdr = function(label, color) {
+      return '<div style="font-family:IBM Plex Mono,monospace;font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:' + color + ';margin:12px 0 6px">' + label + '</div>';
+    };
+
+    html += '<div class="card">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+      + '<div><div class="card-field">' + field + (acres?' — '+acres+' ac':'') + '</div>'
+      + '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px">'
+      + (costPerAc>0?'<span class="chip chem" style="font-size:0.7rem">'+fmt$(costPerAc)+'/ac input</span>':'')
+      + (buPerAc>0 ?'<span class="chip seed" style="font-size:0.7rem">'+buPerAc.toFixed(1)+' bu/ac</span>':'')
+      + '</div></div>'
+      + '<div style="text-align:right"><div style="font-family:Bebas Neue,sans-serif;font-size:1.5rem;color:' + (fldNet>=0?'#a8d99e':'#e8a8a3') + ';line-height:1">' + (fldNet>=0?'+':'') + fmt$(fldNet) + '</div>'
+      + '<div style="font-family:IBM Plex Mono,monospace;font-size:0.65rem;color:rgba(245,237,216,0.35)">NET</div></div></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px">'
+      + '<div style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' + subHdr('🌱 Seed','#a8d99e') + seedRows + '</div>'
+      + '<div style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' + subHdr('🧪 Fertilizer','#a8d4e8') + fertRows + '</div>'
+      + '<div style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' + subHdr('⚗️ Chemical','#e8a8a3') + chemRows + '</div>'
+      + '</div>'
+      + '<div style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px;margin-top:10px">'
+      + subHdr('🚜 Harvest & Sales','#e8b84b') + harvestRows
+      + '<div style="display:flex;gap:16px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(200,146,42,0.25)">'
+      + '<div><div style="font-family:IBM Plex Mono,monospace;font-size:0.7rem;color:rgba(245,237,216,0.35)">INPUT COST</div><div style="font-family:IBM Plex Mono,monospace;color:#e8a8a3">' + fmt$(inputCost) + '</div></div>'
+      + '<div><div style="font-family:IBM Plex Mono,monospace;font-size:0.7rem;color:rgba(245,237,216,0.35)">REVENUE</div><div style="font-family:IBM Plex Mono,monospace;color:#a8d99e">' + fmt$(revenue) + '</div></div>'
+      + '<div><div style="font-family:IBM Plex Mono,monospace;font-size:0.7rem;color:rgba(245,237,216,0.35)">REMAINING</div><div style="font-family:IBM Plex Mono,monospace;color:#a8d4e8">' + fmtBu(remaining) + '</div></div>'
+      + '</div></div></div>';
+  });
+  document.getElementById('summary-details').innerHTML = html;
+}
+
+// ===================== SETTINGS =====================
+function makEl(tag, styles, attrs) {
+  var el = document.createElement(tag);
+  if (styles) el.style.cssText = styles;
+  if (attrs) Object.keys(attrs).forEach(function(k){ el[k] = attrs[k]; });
+  return el;
+}
+
+function renderSettings() {
+  if (!allData) return;
+  var sl = document.getElementById('seasons-list');
+  if (sl) {
+    sl.innerHTML = '';
+    var seasons = Object.keys(allData.seasons).sort().reverse();
+    seasons.forEach(function(s) {
+      var sd = allData.seasons[s];
+      var isCurrent    = s === currentSeason;
+      var inputCount   = (sd.inputs   || []).length;
+      var harvestCount = (sd.harvests || []).length;
+      var row = makEl('div', 'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:' + (isCurrent?'rgba(200,146,42,0.12)':'rgba(0,0,0,0.2)') + ';border:1px solid ' + (isCurrent?'rgba(200,146,42,0.4)':'rgba(200,146,42,0.25)') + ';border-radius:6px;gap:10px;margin-bottom:4px');
+      var left = makEl('div');
+      var nameSpan = makEl('span', null, {textContent: s});
+      nameSpan.style.cssText = 'font-family:IBM Plex Mono,monospace;font-size:0.9rem;color:' + (isCurrent?'#c8922a':'#f5edd8');
+      left.appendChild(nameSpan);
+      if (isCurrent) {
+        var badge = makEl('span', 'font-size:0.62rem;background:#c8922a;color:#2a1f0e;border-radius:3px;padding:1px 6px;margin-left:8px;font-family:IBM Plex Mono,monospace', {textContent:'ACTIVE'});
+        left.appendChild(badge);
+      }
+      var sub = makEl('div', 'font-family:IBM Plex Mono,monospace;font-size:0.68rem;color:rgba(245,237,216,0.35);margin-top:3px', {
+        textContent: inputCount + ' field record' + (inputCount!==1?'s':'') + ' \u00b7 ' + harvestCount + ' harvest' + (harvestCount!==1?'s':'')
+      });
+      left.appendChild(sub); row.appendChild(left);
+      var btns = makEl('div', 'display:flex;gap:8px');
+      if (!isCurrent) {
+        var sw = makEl('button', null, {textContent:'Switch'}); sw.className = 'btn btn-sm btn-sky';
+        sw.addEventListener('click', (function(name){ return function(){ switchSeason(name); renderSettings(); }; })(s));
+        btns.appendChild(sw);
+      }
+      if (seasons.length > 1) {
+        var dl = makEl('button', null, {textContent:'Delete'}); dl.className = 'btn btn-sm btn-danger';
+        dl.addEventListener('click', (function(name){ return function(){ deleteSeason(name); }; })(s));
+        btns.appendChild(dl);
+      }
+      row.appendChild(btns); sl.appendChild(row);
+    });
+  }
+
+  var list = document.getElementById('crops-list');
+  list.innerHTML = '';
+  var inpS = 'background:#1a1208;border:1px solid rgba(200,146,42,0.5);border-radius:4px;padding:8px 12px;color:#f2d98a;-webkit-text-fill-color:#f2d98a;opacity:1;font-size:0.95rem;width:100%;font-family:IBM Plex Sans,sans-serif';
+
+  data.crops.forEach(function(c, i) {
+    var row = makEl('div', 'display:grid;grid-template-columns:1fr 160px 90px auto;gap:10px;align-items:center;margin-bottom:8px');
+    var nameIn = document.createElement('input');
+    nameIn.type = 'text'; nameIn.value = c.name; nameIn.style.cssText = inpS;
+    nameIn.addEventListener('change', (function(idx){ return function(){ updateCrop(idx,'name',this.value); }; })(i));
+    row.appendChild(nameIn);
+    var wrap = makEl('div', 'position:relative');
+    var buIn = document.createElement('input');
+    buIn.type = 'number'; buIn.value = c.buPerTonne; buIn.step = '0.001'; buIn.min = '1';
+    buIn.style.cssText = inpS + ';font-family:IBM Plex Mono,monospace;font-size:0.88rem';
+    buIn.addEventListener('change', (function(idx){ return function(){ updateCrop(idx,'buPerTonne',parseFloat(this.value)); }; })(i));
+    wrap.appendChild(buIn);
+    wrap.appendChild(makEl('span', 'position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:IBM Plex Mono,monospace;font-size:0.68rem;color:rgba(245,237,216,0.35);pointer-events:none', {textContent:'bu/t'}));
+    row.appendChild(wrap);
+    row.appendChild(makEl('div', 'font-family:IBM Plex Mono,monospace;font-size:0.68rem;color:rgba(245,237,216,0.35);text-align:center;line-height:1.4', {textContent:(1000/c.buPerTonne*2.20462).toFixed(1)+' lbs/bu'}));
+    var del = makEl('button', null, {textContent:'x'}); del.className = 'remove-btn';
+    del.addEventListener('click', (function(idx){ return function(){ deleteCrop(idx); }; })(i));
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+
+function updateCrop(i, key, val) { data.crops[i][key] = val; save(); renderSettings(); }
+
+function addCrop() {
+  var name = document.getElementById('new-crop-name').value.trim();
+  var bu   = parseFloat(document.getElementById('new-crop-bu').value);
+  if (!name) { alert('Enter a crop name.'); return; }
+  if (!bu || bu < 1) { alert('Enter a valid bu/tonne rate.'); return; }
+  if (data.crops.find(function(c){ return c.name.toLowerCase()===name.toLowerCase(); })) { alert('That crop already exists.'); return; }
+  var crops = data.crops.slice();
+  crops.push({ name: name, buPerTonne: bu });
+  data.crops = crops;
+  save();
+  document.getElementById('new-crop-name').value = '';
+  document.getElementById('new-crop-bu').value   = '';
+  renderSettings();
+}
+
+function deleteCrop(i) {
+  if (!confirm('Remove "' + data.crops[i].name + '"?')) return;
+  var crops = data.crops.slice(); crops.splice(i, 1);
+  data.crops = crops; save(); renderSettings();
+}
+
+function resetCrops() {
+  if (!confirm('Reset all crops to defaults?')) return;
+  data.crops = DEFAULT_CROPS.map(function(c){ return Object.assign({},c); });
+  save(); renderSettings();
+}
+
+// ===================== PER-ACRE CALCULATOR =====================
+function getExpenses() {
+  if (!allData || !allData.seasons || !allData.seasons[currentSeason]) return [];
+  return allData.seasons[currentSeason].expenses || [];
+}
+
+function openExpenseModal(id) {
+  editingExpenseId = id || null;
+  var today = new Date().toISOString().slice(0,10);
+  // Populate crop dropdown
+  var cropSel = document.getElementById('exp-checkoff-crop');
+  cropSel.innerHTML = (allData ? allData.crops || [] : []).map(function(c){
+    return '<option value="' + c.name + '">' + c.name + '</option>';
+  }).join('');
+
+  if (id) {
+    var exp = getExpenses().find(function(e){ return e.id === id; });
+    document.getElementById('expenseModalTitle').textContent = 'Edit Expense';
+    document.getElementById('exp-date').value     = exp.date || today;
+    document.getElementById('exp-category').value = exp.category || 'fuel';
+    document.getElementById('exp-notes').value    = exp.notes || '';
+    updateExpenseCategory();
+    if (exp.category === 'fuel') {
+      document.getElementById('exp-fuel-type').value  = exp.fuelType  || 'diesel';
+      document.getElementById('exp-fuel-qty').value   = exp.fuelQty   || '';
+      document.getElementById('exp-fuel-price').value = exp.fuelPrice || '';
+      document.getElementById('exp-fuel-total').value = exp.total     || '';
+    } else if (exp.category === 'checkoff') {
+      document.getElementById('exp-checkoff-crop').value  = exp.crop  || '';
+      document.getElementById('exp-checkoff-qty').value   = exp.qty   || '';
+      document.getElementById('exp-checkoff-rate').value  = exp.rate  || '';
+      document.getElementById('exp-checkoff-total').value = exp.total || '';
+    } else {
+      document.getElementById('exp-description').value = exp.description || '';
+      document.getElementById('exp-other-total').value = exp.total       || '';
+    }
+  } else {
+    document.getElementById('expenseModalTitle').textContent = 'New Expense';
+    document.getElementById('exp-date').value     = today;
+    document.getElementById('exp-category').value = 'fuel';
+    document.getElementById('exp-notes').value    = '';
+    document.getElementById('exp-fuel-type').value  = 'diesel';
+    document.getElementById('exp-fuel-qty').value   = '';
+    document.getElementById('exp-fuel-price').value = '';
+    document.getElementById('exp-fuel-total').value = '';
+    document.getElementById('exp-checkoff-qty').value   = '';
+    document.getElementById('exp-checkoff-rate').value  = '';
+    document.getElementById('exp-checkoff-total').value = '';
+    document.getElementById('exp-description').value = '';
+    document.getElementById('exp-other-total').value  = '';
+    updateExpenseCategory();
+  }
+  document.getElementById('expenseModal').classList.add('open');
+}
+
+function closeExpenseModal() {
+  document.getElementById('expenseModal').classList.remove('open');
+}
+
+function updateExpenseCategory() {
+  var cat = document.getElementById('exp-category').value;
+  document.getElementById('exp-fuel-fields').style.display     = cat==='fuel'     ? 'block' : 'none';
+  document.getElementById('exp-checkoff-fields').style.display = cat==='checkoff' ? 'block' : 'none';
+  document.getElementById('exp-other-fields').style.display    = cat==='other'    ? 'block' : 'none';
+}
+
+function calcExpenseTotal() {
+  var qty   = parseFloat(document.getElementById('exp-fuel-qty').value)   || 0;
+  var price = parseFloat(document.getElementById('exp-fuel-price').value) || 0;
+  if (qty && price) document.getElementById('exp-fuel-total').value = (qty * price).toFixed(2);
+}
+
+function calcCheckoffTotal() {
+  var qty  = parseFloat(document.getElementById('exp-checkoff-qty').value)  || 0;
+  var rate = parseFloat(document.getElementById('exp-checkoff-rate').value) || 0;
+  if (qty && rate) document.getElementById('exp-checkoff-total').value = (qty * rate).toFixed(2);
+}
+
+function saveExpense() {
+  var cat   = document.getElementById('exp-category').value;
+  var date  = document.getElementById('exp-date').value;
+  var notes = document.getElementById('exp-notes').value;
+  var exp   = { id: editingExpenseId || uid(), date: date, category: cat, notes: notes };
+
+  if (cat === 'fuel') {
+    exp.fuelType  = document.getElementById('exp-fuel-type').value;
+    exp.fuelQty   = parseFloat(document.getElementById('exp-fuel-qty').value)   || 0;
+    exp.fuelPrice = parseFloat(document.getElementById('exp-fuel-price').value) || 0;
+    exp.total     = parseFloat(document.getElementById('exp-fuel-total').value) || (exp.fuelQty * exp.fuelPrice);
+    if (!exp.total) { alert('Enter fuel quantity and price.'); return; }
+  } else if (cat === 'checkoff') {
+    exp.crop  = document.getElementById('exp-checkoff-crop').value;
+    exp.qty   = parseFloat(document.getElementById('exp-checkoff-qty').value)   || 0;
+    exp.rate  = parseFloat(document.getElementById('exp-checkoff-rate').value)  || 0;
+    exp.total = parseFloat(document.getElementById('exp-checkoff-total').value) || (exp.qty * exp.rate);
+    if (!exp.total) { alert('Enter quantity and rate.'); return; }
+  } else {
+    exp.description = document.getElementById('exp-description').value;
+    exp.total       = parseFloat(document.getElementById('exp-other-total').value) || 0;
+    if (!exp.total) { alert('Enter an amount.'); return; }
+  }
+
+  var season = allData.seasons[currentSeason];
+  var expenses = (season.expenses || []).slice();
+  if (editingExpenseId) {
+    var idx = expenses.findIndex(function(e){ return e.id === editingExpenseId; });
+    expenses[idx] = exp;
+  } else {
+    expenses.push(exp);
+  }
+  season.expenses = expenses;
+  save();
+  closeExpenseModal();
+  renderExpenses();
+}
+
+function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  var season = allData.seasons[currentSeason];
+  season.expenses = (season.expenses || []).filter(function(e){ return e.id !== id; });
+  save();
+  renderExpenses();
+}
+
+function renderExpenses() {
+  var expenses = getExpenses();
+  var list = document.getElementById('expenses-list');
+  var summEl = document.getElementById('expenses-summary');
+  if (!list) return;
+
+  var totalFuel     = 0, totalCheckoff = 0, totalOther = 0;
+  expenses.forEach(function(e){
+    if (e.category==='fuel')     totalFuel     += e.total||0;
+    if (e.category==='checkoff') totalCheckoff += e.total||0;
+    if (e.category==='other')    totalOther    += e.total||0;
+  });
+  var grandTotal = totalFuel + totalCheckoff + totalOther;
+
+  if (grandTotal > 0) {
+    summEl.innerHTML = '<div class="summary-grid">'
+      + '<div class="stat-card"><div class="stat-num" style="color:#a8d4e8">' + fmt$(totalFuel) + '</div><div class="stat-label">&#9981; Fuel</div></div>'
+      + '<div class="stat-card"><div class="stat-num" style="color:#f2d98a">' + fmt$(totalCheckoff) + '</div><div class="stat-label">Checkoffs</div></div>'
+      + '<div class="stat-card"><div class="stat-num" style="color:rgba(245,237,216,0.6)">' + fmt$(totalOther) + '</div><div class="stat-label">Other</div></div>'
+      + '<div class="stat-card"><div class="stat-num" style="color:#e8a8a3">' + fmt$(grandTotal) + '</div><div class="stat-label">Total</div></div>'
+      + '</div>';
+  } else { summEl.innerHTML = ''; }
+
+  if (!expenses.length) {
+    list.innerHTML = '<div class="empty-state"><span class="icon">&#128176;</span>No expenses yet.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  var sorted = expenses.slice().sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
+
+  // Group headers
+  var groups = [
+    { key:'fuel',     label:'Fuel',           color:'#a8d4e8' },
+    { key:'checkoff', label:'Grain Checkoffs', color:'#f2d98a' },
+    { key:'other',    label:'Other',           color:'rgba(245,237,216,0.6)' }
+  ];
+
+  groups.forEach(function(g) {
+    var items = sorted.filter(function(e){ return e.category===g.key; });
+    if (!items.length) return;
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'font-family:Bebas Neue,sans-serif;font-size:1.3rem;letter-spacing:2px;margin:16px 0 10px;color:'+g.color;
+    hdr.textContent = g.label;
+    list.appendChild(hdr);
+
+    items.forEach(function(e) {
+      var card = document.createElement('div');
+      card.className = 'card';
+      if (g.key==='fuel')     card.style.borderColor='rgba(125,184,212,0.3)';
+      if (g.key==='checkoff') card.style.borderColor='rgba(242,217,138,0.3)';
+
+      var title = '';
+      var sub   = e.date || '';
+      if (e.category==='fuel')     { title = (e.fuelType||'Fuel') + (e.fuelQty?' — '+e.fuelQty+' L':''); }
+      if (e.category==='checkoff') { title = (e.crop||'Checkoff') + (e.qty?' — '+e.qty+' bu':''); }
+      if (e.category==='other')    { title = e.description||'Expense'; }
+      if (e.notes) sub += (sub?' · ':'') + e.notes;
+
+      var header = document.createElement('div');
+      header.className = 'card-header';
+
+      var left = document.createElement('div');
+      var titleEl = document.createElement('div');
+      titleEl.className = 'card-field';
+      titleEl.style.fontSize = '1.1rem';
+      titleEl.textContent = title;
+      var subEl = document.createElement('div');
+      subEl.className = 'card-date';
+      subEl.textContent = sub;
+      left.appendChild(titleEl); left.appendChild(subEl);
+
+      var right = document.createElement('div');
+      right.className = 'card-actions';
+      var amt = document.createElement('span');
+      amt.style.cssText = 'font-family:IBM Plex Mono,monospace;font-size:1rem;color:'+g.color;
+      amt.textContent = fmt$(e.total||0);
+      var editBtn = document.createElement('button');
+      editBtn.className = 'btn btn-sm'; editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', (function(id){ return function(){ openExpenseModal(id); }; })(e.id));
+      var delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-sm btn-danger'; delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', (function(id){ return function(){ deleteExpense(id); }; })(e.id));
+      right.appendChild(amt); right.appendChild(editBtn); right.appendChild(delBtn);
+
+      header.appendChild(left); header.appendChild(right);
+      card.appendChild(header);
+      list.appendChild(card);
+    });
+  });
+}
+
+
+function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  var season = allData.seasons[currentSeason];
+  season.expenses = (season.expenses || []).filter(function(e){ return e.id !== id; });
+  save();
+  renderExpenses();
+}
+
+// ===================== INIT =====================
+initFirebase();
+
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function(e){ console.log('SW error:', e); });
+  });
+}
+</script>
+</body>
+</html>
