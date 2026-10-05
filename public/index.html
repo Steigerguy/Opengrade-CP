@@ -844,6 +844,7 @@
         <button class="btn btn-sm btn-sky" onclick="addFertRow()">+ Add</button>
       </div>
       <div class="dynamic-list" id="fert-list"></div>
+      <datalist id="fert-suggestions"></datalist>
     </div>
 
     <!-- CHEMICAL -->
@@ -853,6 +854,7 @@
         <button class="btn btn-sm btn-danger" onclick="addChemRow()">+ Add</button>
       </div>
       <div class="dynamic-list" id="chem-list"></div>
+      <datalist id="chem-suggestions"></datalist>
     </div>
 
     <div class="form-group">
@@ -1457,11 +1459,11 @@ function addFertRow(type, amount, fertUnit, unitCost, cost, amountPerAc) {
   // Row 1: type + remove
   var row1 = document.createElement('div');
   row1.style.cssText = 'display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center';
-  var typeTypes = ['Urea','Fish','E-Phos','DAP','MAP','Potash','AMS','Anhydrous','Sugar','Calcium','Other'];
-  var typeSel = document.createElement('select'); typeSel.style.cssText = s;
-  var blankOpt = document.createElement('option'); blankOpt.value=''; blankOpt.textContent='Select type...';
-  typeSel.appendChild(blankOpt);
-  typeTypes.forEach(function(tp){ var o=document.createElement('option'); o.value=tp; o.textContent=tp; if(tp===type) o.selected=true; typeSel.appendChild(o); });
+  // Free text, with the common types plus anything used before offered as suggestions
+  var typeSel = document.createElement('input');
+  typeSel.type = 'text'; typeSel.placeholder = 'Fertilizer type'; typeSel.value = type;
+  typeSel.setAttribute('list', 'fert-suggestions'); typeSel.autocomplete = 'off';
+  typeSel.style.cssText = s;
   var btn = document.createElement('button'); btn.className='remove-btn'; btn.textContent='x';
   btn.addEventListener('click', function(){ div.remove(); });
   row1.appendChild(typeSel); row1.appendChild(btn);
@@ -1525,7 +1527,7 @@ function addChemRow(name, qty, chemUnit, unitCost, cost, qtyPerAc) {
 
   // Row 1: name + remove
   var row1=document.createElement('div'); row1.style.cssText='display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center';
-  var nameIn=document.createElement('input'); nameIn.type='text'; nameIn.placeholder='Chemical name'; nameIn.value=name; nameIn.style.cssText=s; nameIn.style.color='#f5edd8'; nameIn.style.webkitTextFillColor='#f5edd8';
+  var nameIn=document.createElement('input'); nameIn.type='text'; nameIn.placeholder='Chemical name'; nameIn.value=name; nameIn.setAttribute('list','chem-suggestions'); nameIn.autocomplete='off'; nameIn.style.cssText=s; nameIn.style.color='#f5edd8'; nameIn.style.webkitTextFillColor='#f5edd8';
   var btn=document.createElement('button'); btn.className='remove-btn'; btn.textContent='x'; btn.addEventListener('click',function(){ div.remove(); });
   row1.appendChild(nameIn); row1.appendChild(btn);
 
@@ -1653,7 +1655,32 @@ function fmt$(n) { return '$' + Number(n).toLocaleString('en-US', {minimumFracti
 function fmtBu(n) { return Number(n).toLocaleString() + ' bu'; }
 
 // ===================== INPUT MODAL =====================
+var DEFAULT_FERT_TYPES = ['Urea','Fish','E-Phos','DAP','MAP','Potash','AMS','Anhydrous','Sugar','Calcium'];
+
+// Suggestion lists: the defaults plus every name already used in any season,
+// so a new product typed once shows up as a choice next time.
+function fillSuggestions() {
+  var fert = DEFAULT_FERT_TYPES.slice(), chem = [];
+  function addName(list, n) {
+    n = (n || '').trim();
+    if (n && !list.some(function(x){ return x.toLowerCase() === n.toLowerCase(); })) list.push(n);
+  }
+  Object.keys((allData && allData.seasons) || {}).forEach(function(k) {
+    (allData.seasons[k].inputs || []).forEach(function(r) {
+      (r.fert || []).forEach(function(f){ addName(fert, f.type); });
+      (r.chem || []).forEach(function(c){ addName(chem, c.name); });
+    });
+  });
+  function render(id, list) {
+    document.getElementById(id).innerHTML = list.sort(function(a, b){ return a.localeCompare(b); })
+      .map(function(n){ return '<option value="' + esc(n) + '">'; }).join('');
+  }
+  render('fert-suggestions', fert);
+  render('chem-suggestions', chem);
+}
+
 function openInputModal(id) {
+  fillSuggestions();
   editingInputId = id || null;
   document.getElementById('seed-list').innerHTML = '';
   document.getElementById('fert-list').innerHTML = '';
