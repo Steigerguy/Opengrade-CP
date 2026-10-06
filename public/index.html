@@ -331,6 +331,18 @@
 
   .remove-btn:hover { background: #d45c50; }
 
+  .suggest-box { display: none; flex-wrap: wrap; gap: 6px; max-height: 96px; overflow-y: auto; }
+  .suggest-chip {
+    background: rgba(200,146,42,0.15);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--grain);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+
   .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -844,7 +856,6 @@
         <button class="btn btn-sm btn-sky" onclick="addFertRow()">+ Add</button>
       </div>
       <div class="dynamic-list" id="fert-list"></div>
-      <datalist id="fert-suggestions"></datalist>
     </div>
 
     <!-- CHEMICAL -->
@@ -854,7 +865,6 @@
         <button class="btn btn-sm btn-danger" onclick="addChemRow()">+ Add</button>
       </div>
       <div class="dynamic-list" id="chem-list"></div>
-      <datalist id="chem-suggestions"></datalist>
     </div>
 
     <div class="form-group">
@@ -1466,7 +1476,7 @@ function addFertRow(type, amount, fertUnit, unitCost, cost, amountPerAc) {
   // Free text, with the common types plus anything used before offered as suggestions
   var typeSel = document.createElement('input');
   typeSel.type = 'text'; typeSel.placeholder = 'Fertilizer type'; typeSel.value = type;
-  typeSel.setAttribute('list', 'fert-suggestions'); typeSel.autocomplete = 'off';
+  typeSel.autocomplete = 'off';
   typeSel.style.cssText = s;
   var btn = document.createElement('button'); btn.className='remove-btn'; btn.textContent='x';
   btn.addEventListener('click', function(){ div.remove(); });
@@ -1519,6 +1529,7 @@ function addFertRow(type, amount, fertUnit, unitCost, cost, amountPerAc) {
   ucIn.addEventListener('input', calcTotal);
 
   div.appendChild(row1); div.appendChild(row2); div.appendChild(row3); div.appendChild(row4);
+  attachSuggest(typeSel, 'fert');
   document.getElementById('fert-list').appendChild(div);
 }
 
@@ -1531,7 +1542,7 @@ function addChemRow(name, qty, chemUnit, unitCost, cost, qtyPerAc) {
 
   // Row 1: name + remove
   var row1=document.createElement('div'); row1.style.cssText='display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center';
-  var nameIn=document.createElement('input'); nameIn.type='text'; nameIn.placeholder='Chemical name'; nameIn.value=name; nameIn.setAttribute('list','chem-suggestions'); nameIn.autocomplete='off'; nameIn.style.cssText=s; nameIn.style.color='#f5edd8'; nameIn.style.webkitTextFillColor='#f5edd8';
+  var nameIn=document.createElement('input'); nameIn.type='text'; nameIn.placeholder='Chemical name'; nameIn.value=name; nameIn.autocomplete='off'; nameIn.style.cssText=s; nameIn.style.color='#f5edd8'; nameIn.style.webkitTextFillColor='#f5edd8';
   var btn=document.createElement('button'); btn.className='remove-btn'; btn.textContent='x'; btn.addEventListener('click',function(){ div.remove(); });
   row1.appendChild(nameIn); row1.appendChild(btn);
 
@@ -1569,6 +1580,7 @@ function addChemRow(name, qty, chemUnit, unitCost, cost, qtyPerAc) {
   ucIn.addEventListener('input',calcTotal);
 
   div.appendChild(row1); div.appendChild(row2); div.appendChild(row3); div.appendChild(row4);
+  attachSuggest(nameIn, 'chem');
   document.getElementById('chem-list').appendChild(div);
 }
 
@@ -1675,12 +1687,44 @@ function fillSuggestions() {
       (r.chem || []).forEach(function(c){ addName(chem, c.name); });
     });
   });
-  function render(id, list) {
-    document.getElementById(id).innerHTML = list.sort(function(a, b){ return a.localeCompare(b); })
-      .map(function(n){ return '<option value="' + esc(n) + '">'; }).join('');
+  function byName(a, b){ return a.localeCompare(b); }
+  suggestions.fert = fert.sort(byName);
+  suggestions.chem = chem.sort(byName);
+}
+
+// Tap-to-fill suggestion buttons shown under a name box while it has focus.
+// (Used instead of <datalist>, whose Chrome popup was unreliable in the installed Android app.)
+var suggestions = { fert: DEFAULT_FERT_TYPES.slice(), chem: [] };
+
+function attachSuggest(input, kind) {
+  var box = document.createElement('div');
+  box.className = 'suggest-box';
+  input.parentNode.parentNode.insertBefore(box, input.parentNode.nextSibling);
+
+  function show() {
+    var q = input.value.trim().toLowerCase();
+    var matches = suggestions[kind].filter(function(n) {
+      var l = n.toLowerCase();
+      return l !== q && (!q || l.indexOf(q) !== -1);
+    }).slice(0, 12);
+    box.innerHTML = '';
+    matches.forEach(function(n) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'suggest-chip'; b.textContent = n;
+      // pointerdown + preventDefault keeps the keyboard and focus on the input
+      b.addEventListener('pointerdown', function(e) {
+        e.preventDefault();
+        input.value = n;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        box.style.display = 'none';
+      });
+      box.appendChild(b);
+    });
+    box.style.display = matches.length ? 'flex' : 'none';
   }
-  render('fert-suggestions', fert);
-  render('chem-suggestions', chem);
+  input.addEventListener('focus', show);
+  input.addEventListener('input', show);
+  input.addEventListener('blur', function(){ box.style.display = 'none'; });
 }
 
 function openInputModal(id) {
