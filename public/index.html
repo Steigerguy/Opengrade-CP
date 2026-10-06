@@ -1124,6 +1124,7 @@ function doLogout() {
   if (local && local.dirty && !confirm('Some changes have not synced yet and will be lost if you sign out. Sign out anyway?')) return;
   clearTimeout(saveTimeout);
   if (currentUser) { try { localStorage.removeItem(localKey()); } catch(e) {} }
+  clearDraft();
   localStorage.removeItem('fr_session');
   currentUser = null; idToken = null; tokenExpiry = 0; allData = null; loaded = false;
   setIndicator('');
@@ -1178,8 +1179,10 @@ function applyData(val) {
   }
 
   currentSeason = allData.seasons[allData.currentSeason] ? allData.currentSeason : Object.keys(allData.seasons)[0];
+  var firstLoad = !loaded;
   loaded = true;
   renderAll();
+  if (firstLoad) restoreAfterRestart();
 }
 
 // Older versions saved chemical rows shifted by one field: the per-acre qty landed in
@@ -1379,6 +1382,7 @@ function showSection(name, tab) {
   if (name === 'summary')  renderSummary();
   if (name === 'expenses') renderExpenses();
   if (name === 'settings') renderSettings();
+  try { localStorage.setItem('fr_tab', name); } catch(e) {}
 }
 
 // ===================== ROW HELPERS =====================
@@ -1711,7 +1715,7 @@ var editingInputId   = null;
 var editingHarvestId = null;
 var editingExpenseId = null;
 
-function closeInputModal() { document.getElementById('inputModal').classList.remove('open'); }
+function closeInputModal() { document.getElementById('inputModal').classList.remove('open'); clearDraft(); }
 
 function saveInputRecord() {
   var field = document.getElementById('i-field').value.trim();
@@ -1770,7 +1774,7 @@ function openHarvestModal(id) {
   document.getElementById('harvestModal').classList.add('open');
 }
 
-function closeHarvestModal() { document.getElementById('harvestModal').classList.remove('open'); }
+function closeHarvestModal() { document.getElementById('harvestModal').classList.remove('open'); clearDraft(); }
 
 function saveHarvestRecord() {
   var field = document.getElementById('h-field').value.trim();
@@ -1850,7 +1854,7 @@ function showSellEquiv() {
   equiv.textContent = parts.join('  •  ');
 }
 
-function closeSellModal() { document.getElementById('sellModal').classList.remove('open'); }
+function closeSellModal() { document.getElementById('sellModal').classList.remove('open'); clearDraft(); }
 
 function saveSale() {
   var id  = document.getElementById('sell-harvest-id').value;
@@ -2233,6 +2237,7 @@ function openExpenseModal(id) {
 
 function closeExpenseModal() {
   document.getElementById('expenseModal').classList.remove('open');
+  clearDraft();
 }
 
 function updateExpenseCategory() {
@@ -2394,6 +2399,106 @@ function renderExpenses() {
   });
 }
 
+
+// ===================== DRAFTS =====================
+// Android closes background apps to save memory. Keep whatever form is half
+// filled in (and the open tab) so it comes back when the app is reopened.
+var DRAFT_MODALS = {
+  inputModal:   { editing: function(){ return editingInputId; },   open: function(id){ openInputModal(id); } },
+  harvestModal: { editing: function(){ return editingHarvestId; }, open: function(id){ openHarvestModal(id); } },
+  expenseModal: { editing: function(){ return editingExpenseId; }, open: function(id){ openExpenseModal(id); } },
+  sellModal:    { editing: function(){ return document.getElementById('sell-harvest-id').value; },
+                  open: function(id){ openSellModal(id); } }
+};
+var DRAFT_LISTS = { 'seed-list': addSeedRow, 'fert-list': addFertRow, 'chem-list': addChemRow, 'sale-list': addSaleRow };
+var draftTimer = null;
+
+function draftKey() { return currentUser ? 'fr_draft_' + currentUser.uid : null; }
+
+function clearDraft() {
+  clearTimeout(draftTimer);
+  try { if (draftKey()) localStorage.removeItem(draftKey()); } catch(e) {}
+}
+
+function saveDraftNow() {
+  clearTimeout(draftTimer);
+  var key = draftKey();
+  if (!key || !loaded) return;
+  var modalId = Object.keys(DRAFT_MODALS).filter(function(id){
+    return document.getElementById(id).classList.contains('open');
+  })[0];
+  if (!modalId) return;
+  var modal = document.getElementById(modalId);
+  var fields = {}, lists = {};
+  modal.querySelectorAll('input[id], select[id], textarea[id]').forEach(function(el){ fields[el.id] = el.value; });
+  Object.keys(DRAFT_LISTS).forEach(function(listId) {
+    var list = modal.querySelector('#' + listId);
+    if (!list) return;
+    lists[listId] = Array.from(list.children).map(function(row) {
+      return Array.from(row.querySelectorAll('input, select')).map(function(el){ return el.value; });
+    });
+  });
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      modal: modalId, editing: DRAFT_MODALS[modalId].editing() || null,
+      season: currentSeason, fields: fields, lists: lists
+    }));
+  } catch(e) {}
+}
+
+function scheduleDraftSave() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(saveDraftNow, 300);
+}
+
+function restoreAfterRestart() {
+  var tab = null;
+  try { tab = localStorage.getItem('fr_tab'); } catch(e) {}
+  if (tab && document.getElementById('section-' + tab)) showSection(tab);
+
+  var d = null;
+  try { d = JSON.parse(localStorage.getItem(draftKey()) || 'null'); } catch(e) {}
+  if (!d || !DRAFT_MODALS[d.modal]) return;
+  if (d.season && allData.seasons[d.season] && d.season !== currentSeason) { currentSeason = d.season; renderAll(); }
+
+  // Editing a record that no longer exists → keep the typing as a new record
+  var editing = d.editing;
+  if (d.modal === 'inputModal'   && editing && !data.inputs.some(function(r){ return r.id === editing; }))   editing = null;
+  if (d.modal === 'harvestModal' && editing && !data.harvests.some(function(r){ return r.id === editing; })) editing = null;
+  if (d.modal === 'expenseModal' && editing && !getExpenses().some(function(e){ return e.id === editing; }))  editing = null;
+  if (d.modal === 'sellModal'    && !data.harvests.some(function(r){ return r.id === editing; })) { clearDraft(); return; }
+
+  try {
+    DRAFT_MODALS[d.modal].open(editing);
+    Object.keys(d.lists || {}).forEach(function(listId) {
+      var list = document.getElementById(listId);
+      list.innerHTML = '';
+      d.lists[listId].forEach(function(values) {
+        DRAFT_LISTS[listId]();
+        var els = list.lastElementChild.querySelectorAll('input, select');
+        values.forEach(function(v, i){ if (els[i]) els[i].value = v; });
+      });
+    });
+    Object.keys(d.fields || {}).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = d.fields[id];
+    });
+    if (d.modal === 'expenseModal') updateExpenseCategory();
+    if (d.modal === 'sellModal') { updateSellUnit(); }
+  } catch(e) {
+    console.error('Draft restore failed:', e);
+    clearDraft();
+  }
+}
+
+document.querySelectorAll('.modal-overlay').forEach(function(m) {
+  ['input', 'change', 'click'].forEach(function(ev){ m.addEventListener(ev, scheduleDraftSave); });
+});
+// Save immediately when the app is sent to the background, before Android can close it
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden') saveDraftNow();
+});
+window.addEventListener('pagehide', saveDraftNow);
 
 // ===================== INIT =====================
 ['sell-qty','sell-price','sell-unit'].forEach(function(id){

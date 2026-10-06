@@ -1,6 +1,6 @@
 // Field Records Service Worker
 // Bump CACHE when you deploy changes to the shell files below; old caches are deleted on activate.
-const CACHE = 'field-records-v3';
+const CACHE = 'field-records-v4';
 const SHELL = [
   '/',
   '/manifest.json',
