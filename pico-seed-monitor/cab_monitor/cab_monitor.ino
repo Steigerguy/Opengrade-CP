@@ -43,7 +43,9 @@ struct Settings {
   // Map on the page: tower numbers left to right, rows split by '/',
   // first row = front. 0 = empty spot.
   String layout = "1,2,3,4/5,6,7,8";
+  uint8_t rowOff = 0;       // bit per layout row (bit 0 = front rank) switched off
 } cfg;
+int8_t towerRowOf[SBM_MAX_TOWERS + 1];  // layout row of each tower, -1 = not on map
 Preferences prefs;
 
 // ---------------- tower data ----------------
@@ -92,6 +94,7 @@ void loadSettings() {
   cfg.always = prefs.getBool("always", cfg.always);
   prefs.getBytes("ignore", cfg.ignore, sizeof(cfg.ignore));
   cfg.layout = prefs.getString("layout", cfg.layout);
+  cfg.rowOff = prefs.getUChar("rowoff", 0);
   prefs.end();
   if (cfg.towers < 1 || cfg.towers > SBM_MAX_TOWERS) cfg.towers = 8;
 }
@@ -107,7 +110,27 @@ void saveSettings() {
   prefs.putBool("always", cfg.always);
   prefs.putBytes("ignore", cfg.ignore, sizeof(cfg.ignore));
   prefs.putString("layout", cfg.layout);
+  prefs.putUChar("rowoff", cfg.rowOff);
   prefs.end();
+}
+
+// Work out which layout row (rank) each tower is in, e.g. "1,2,3,4/5,6,7,8".
+void parseLayout() {
+  for (int t = 0; t <= SBM_MAX_TOWERS; t++) towerRowOf[t] = -1;
+  int row = 0, num = 0;
+  for (size_t i = 0; i <= cfg.layout.length(); i++) {
+    char c = i < cfg.layout.length() ? cfg.layout[i] : '/';
+    if (c >= '0' && c <= '9') { num = num * 10 + (c - '0'); continue; }
+    if (num >= 1 && num <= SBM_MAX_TOWERS && row < 8) towerRowOf[num] = row;
+    num = 0;
+    if (c == '/') row++;
+  }
+}
+
+// A tower is checked unless its rank has been switched off.
+bool towerEnabled(uint8_t t) {
+  int8_t r = towerRowOf[t];
+  return r < 0 || !(cfg.rowOff & (1 << r));
 }
 
 // ======================================================================
@@ -195,8 +218,9 @@ void evaluate() {
     Tower &T = towers[t];
     bool online = towerOnline(t);
     bool tuning = T.flags & SBM_FLAG_TUNE;
+    bool enabled = towerEnabled(t);
     uint8_t n = T.numRuns ? T.numRuns : 9;
-    if (!online) anyOffline = true;
+    if (!online && enabled) anyOffline = true;
 
     // Tower average over runs that are not ignored.
     uint32_t sum = 0, cnt = 0;
@@ -211,7 +235,7 @@ void evaluate() {
     for (uint8_t r = 0; r < SBM_MAX_RUNS; r++) {
       if (r >= n) { T.state[r] = RS_IDLE; T.lowSecs[r] = 0; continue; }
       if (cfg.ignore[t] & (1 << r)) { T.state[r] = RS_IGNORED; T.lowSecs[r] = 0; continue; }
-      if (!active || !online || tuning) { T.state[r] = RS_IDLE; T.lowSecs[r] = 0; continue; }
+      if (!active || !online || tuning || !enabled) { T.state[r] = RS_IDLE; T.lowSecs[r] = 0; continue; }
 
       uint32_t pct = T.avg ? (uint32_t)T.rate[r] * 100 / T.avg : 0;
       bool low = towerDead || pct < cfg.blockPct;
@@ -263,6 +287,7 @@ void handleData() {
     j += "{\"id\":"; j += t;
     j += ",\"on\":"; j += towerOnline(t) ? 1 : 0;
     j += ",\"tune\":"; j += (T.flags & SBM_FLAG_TUNE) ? 1 : 0;
+    j += ",\"en\":"; j += towerEnabled(t) ? 1 : 0;
     j += ",\"avg\":"; j += T.avg;
     j += ",\"r\":[";
     for (uint8_t r = 0; r < n; r++) { if (r) j += ','; j += T.rate[r]; }
@@ -278,6 +303,7 @@ void handleData() {
   j += ",\"min\":"; j += cfg.minAvg;
   j += ",\"always\":"; j += cfg.always ? 1 : 0;
   j += ",\"layout\":\""; j += cfg.layout; j += '"';
+  j += ",\"rowoff\":"; j += cfg.rowOff;
   j += "}}";
   server.send(200, "application/json", j);
 }
@@ -306,6 +332,7 @@ void handleSet() {
     if (out.length()) cfg.layout = out;
   }
   saveSettings();
+  parseLayout();
   server.send(200, "text/plain", "ok");
 }
 
@@ -315,6 +342,16 @@ void handleIgnore() {
   if (t >= 1 && r >= 1) {
     cfg.ignore[t] ^= (1 << (r - 1));
     towers[t].lowSecs[r - 1] = 0;
+    saveSettings();
+  }
+  server.send(200, "text/plain", "ok");
+}
+
+// /rank?r=0 toggles the front rank (layout row 0), r=1 the back rank, etc.
+void handleRank() {
+  long r = argOr("r", -1, -1, 7);
+  if (r >= 0) {
+    cfg.rowOff ^= (1 << r);
     saveSettings();
   }
   server.send(200, "text/plain", "ok");
@@ -337,6 +374,7 @@ void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
   loadSettings();
+  parseLayout();
 
   Network.onEvent(onNetEvent);
   // Olimex ESP32-POE: LAN8720, PHY addr 0, MDC 23, MDIO 18, power 12, clock out on GPIO17
@@ -354,6 +392,7 @@ void setup() {
   server.on("/set", handleSet);
   server.on("/ignore", handleIgnore);
   server.on("/mute", handleMute);
+  server.on("/rank", handleRank);
   server.begin();
 
   // short beep so you know it booted

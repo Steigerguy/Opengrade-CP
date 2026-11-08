@@ -98,6 +98,8 @@ Fit 120 Ω termination **only at the cab unit and the last tower**.
   a ring of run segments, with run 1 at the top (front) going clockwise. Blocked runs go red and the tower centre flashes.
   Tap a tower to jump to its flow bars. Set the layout in Settings, e.g. `1,2,3,4/5,6,7,8`
   (tower numbers left to right, `/` starts the next row back, first row = front, `0` = empty spot).
+- **Front / Back buttons** in the header switch a whole rank's monitoring on or off (first layout row = Front,
+  second = Back). Towers in a rank that's off aren't checked, don't alarm, and show dimmed. The choice is saved.
 - **Tap a run's bar** to ignore it (e.g. a broken sensor). Ignores are saved.
 - **Mute** silences the buzzer for 2 minutes.
 - All thresholds are in **Settings** at the bottom of the page.

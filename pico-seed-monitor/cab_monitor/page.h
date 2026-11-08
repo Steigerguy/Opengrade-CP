@@ -29,6 +29,10 @@ button.on{background:var(--ok);border-color:var(--ok)}
 #map .front{fill:var(--dim);font-size:13px;text-anchor:start}
 #map .hub{fill:#0c0f12;stroke:var(--line);stroke-width:2}
 #map .hub.alarm{fill:#5a1210;stroke:var(--bad);stroke-width:3;animation:fl 1s steps(2) infinite}
+#map .twr.dis{opacity:.3}
+.tw.dis{opacity:.35}
+#ranks{display:flex;gap:6px}
+#ranks button:not(.on){background:#4a1f1f;border-color:#7a2a2a}
 #map .hub.dead{stroke:var(--bad);stroke-dasharray:5 4}
 .tw.flash{outline:3px solid #fff}
 #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:12px}
@@ -58,6 +62,7 @@ summary{font-weight:700;cursor:pointer}
   <span id="aog" class="pill">AgOpenGPS</span>
   <span id="spd" class="pill">-- km/h</span>
   <span class="sp"></span>
+  <span id="ranks"></span>
   <button id="snd">Sound off</button>
   <button id="mute">Mute 2 min</button>
 </header>
@@ -94,23 +99,29 @@ function ignore(t,r){ if(confirm('Toggle ignore for tower '+t+' run '+r+'?')) fe
 const SC=['#2fb35a','#e0a400','#e5322d','#555','#3d4651'];
 function wedge(cx,cy,r0,r1,a0,a1){const p=(r,a)=>(cx+r*Math.cos(a)).toFixed(1)+' '+(cy+r*Math.sin(a)).toFixed(1);
   return 'M'+p(r1,a0)+'A'+r1+' '+r1+' 0 0 1 '+p(r1,a1)+'L'+p(r0,a1)+'A'+r0+' '+r0+' 0 0 0 '+p(r0,a0)+'Z';}
+const RANK=['Front','Back'];
+function rankName(i){return RANK[i]||('Row '+(i+1));}
+function toggleRank(i,on){ if(confirm((on?'Turn OFF ':'Turn ON ')+rankName(i)+' rank monitoring?')) fetch('/rank?r='+i); }
 function showTower(id){const el=$('tw'+id); if(!el) return; el.scrollIntoView({behavior:'smooth',block:'center'});
   el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1500);}
 function drawMap(d){
   const rows=(d.cfg.layout||'1,2,3,4/5,6,7,8').split('/').map(r=>r.split(',').map(x=>parseInt(x)||0));
   const cols=Math.max(...rows.map(r=>r.length)), DX=130, DY=130, W=cols*DX+40, H=rows.length*DY+30;
   const byId={}; d.t.forEach(t=>byId[t.id]=t);
+  let rb=''; rows.forEach((row,ri)=>{ const on=!((d.cfg.rowoff||0)&(1<<ri));
+    rb+='<button class="'+(on?'on':'')+'" onclick="toggleRank('+ri+','+on+')">'+rankName(ri)+' '+(on?'ON':'OFF')+'</button>'; });
+  $('ranks').innerHTML=rb;
   let g='<text class="front" x="12" y="14">FRONT</text>';
   rows.forEach((row,ri)=>{ const y=40+ri*DY+DY/2-10, x0=20+DX/2, x1=20+(row.length-0.5)*DX;
-    g+='<line class="bar" x1="'+(x0-50)+'" y1="'+y+'" x2="'+(x1+50)+'" y2="'+y+'"/>';
+    g+='<line class="bar" style="opacity:'+(((d.cfg.rowoff||0)&(1<<ri))?.25:1)+'" x1="'+(x0-50)+'" y1="'+y+'" x2="'+(x1+50)+'" y2="'+y+'"/>';
     row.forEach((id,ci)=>{ const t=byId[id]; if(!t) return; const cx=20+DX/2+ci*DX, n=t.r.length;
-      const blocked=t.s.filter(s=>s==2).length, dead=!t.on;
-      g+='<g class="twr" onclick="showTower('+id+')">';
+      const blocked=t.s.filter(s=>s==2).length, dis=!t.en, dead=!t.on&&!dis;
+      g+='<g class="twr'+(dis?' dis':'')+'" onclick="showTower('+id+')">';
       for(let i=0;i<n;i++){ const a0=-Math.PI/2+(i/n)*2*Math.PI+0.05, a1=-Math.PI/2+((i+1)/n)*2*Math.PI-0.05;
         g+='<path d="'+wedge(cx,y,38,54,a0,a1)+'" fill="'+(dead?'#2a2f36':SC[t.s[i]]??SC[4])+'"><title>Tower '+id+' run '+(i+1)+': '+t.r[i]+'/s</title></path>'; }
       g+='<circle class="hub'+(blocked&&d.act?' alarm':'')+(dead?' dead':'')+'" cx="'+cx+'" cy="'+y+'" r="34"/>';
       g+='<text x="'+cx+'" y="'+(y-7)+'" style="font-size:22px">'+id+'</text>';
-      g+='<text class="sub" x="'+cx+'" y="'+(y+14)+'">'+(dead?'NO SIG':(blocked&&d.act?'BLOCKED':t.avg+'/s'))+'</text></g>'; });
+      g+='<text class="sub" x="'+cx+'" y="'+(y+14)+'">'+(dis?'OFF':dead?'NO SIG':(blocked&&d.act?'BLOCKED':t.avg+'/s'))+'</text></g>'; });
   });
   const m=$('map'); m.setAttribute('viewBox','0 0 '+W+' '+H); m.innerHTML=g;
 }
@@ -130,9 +141,9 @@ function render(d){
   const bad=[], off=[];
   let h='';
   for(const t of d.t){
-    if(!t.on) off.push(t.id);
-    h+='<div id="tw'+t.id+'" class="tw'+(t.on?'':' off')+'"><div class="th"><span>Tower '+t.id+'</span><small>'+
-       (t.on?(t.tune?'TUNE MODE':'avg '+t.avg+'/s'):'NO SIGNAL')+'</small></div><div class="bars">';
+    if(!t.on&&t.en) off.push(t.id);
+    h+='<div id="tw'+t.id+'" class="tw'+(!t.en?' dis':t.on?'':' off')+'"><div class="th"><span>Tower '+t.id+'</span><small>'+
+       (!t.en?'RANK OFF':t.on?(t.tune?'TUNE MODE':'avg '+t.avg+'/s'):'NO SIGNAL')+'</small></div><div class="bars">';
     t.r.forEach((v,i)=>{ const s=t.s[i], pct=t.avg?Math.round(v*100/t.avg):0;
       if(s==2) bad.push('T'+t.id+' R'+(i+1));
       const hgt=Math.min(pct,150)/1.5;
