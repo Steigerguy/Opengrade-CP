@@ -1,16 +1,22 @@
-# Seed blockage monitor - ONE TOWER - bench test version
+# Seed blockage monitor - tower node - bench test version
 # Raspberry Pi Pico H, MicroPython
+# Matches KiCad "tower_node" rev B (8-run and 9-run boards).
 #
-# Piezo on each run -> LM339 comparator -> Pico GPIO.
-# LM339 output is open-collector: it pulls the pin LOW on each seed hit,
-# and a pull-up (to 3.3V, NOT 5V) brings it back HIGH.
+# Per run on the board:
+#   piezo -> 1M bleed + 1k series -> 1N4148 clamps -> LM339 IN+
+#   LM339 IN- = VTH from trimpot RV1 (about 0 - 0.58 V)
+#   LM339 output pulled up 10k to 3V3 on the board
+# So the pin idles LOW and goes HIGH while the piezo spike is above VTH.
+# Each seed hit = a RISING edge.
 #
-# Every second it prints hits/second for each run and flags any run
-# that is way below the tower average while the seeder is running.
-# CAN bus to the cab ESP32 is not in this version (pins GP16-GP20
-# are left free for an MCP2515 later).
+# Pico pin map (from the board):
+#   OUT1-OUT4 -> GP2-GP5   (Pico pins 4-7)
+#   OUT5-OUT8 -> GP6-GP9   (Pico pins 9-12)
+#   OUT9      -> GP12      (Pico pin 16, 9-run board only)
+#   CAN_RX    -> GP10, CAN_TX -> GP11 (SN65HVD230, not used in this test)
+#   ADC_TAP   -> GP26/ADC0 (run 1 raw signal when JP1 jumper is fitted)
 
-from machine import Pin
+from machine import Pin, ADC
 import time
 import array
 import machine
@@ -18,15 +24,15 @@ from micropython import const
 
 # ---------------- SETTINGS ----------------
 TOWER_ID = 1
+NUM_RUNS = 9                # 9 or 8 for the board you are testing
 
-# Run 1..9 -> GP2..GP10. For an 8-run tower delete the last pin.
-# While bench testing, list only the pins you have wired up.
-RUN_PINS = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+# Set True with the JP1 jumper fitted to see run 1's raw piezo voltage
+# (for setting the RV1 threshold). False = normal counting mode.
+TUNE_MODE = False
 
-USE_INTERNAL_PULLUP = True  # fine for testing; use 4.7k-10k to 3.3V on the real thing
-
-# One seed hit makes the piezo ring, which can make the comparator
-# chatter. Ignore extra edges on the same run for this long.
+# A hit makes the piezo ring, which can make the comparator chatter
+# (there is no hysteresis on the board). Ignore extra edges on the
+# same run for this long.
 LOCKOUT_US = const(1000)    # 1 ms -> max ~1000 counts/s per run
 
 REPORT_MS = 1000            # how often to print / check
@@ -35,69 +41,104 @@ BLOCK_PCT = 25              # run below this % of tower average = low
 BLOCK_SECONDS = 3           # ...for this many reports in a row = BLOCKED
 # ------------------------------------------
 
-N = len(RUN_PINS)
-counts = array.array('i', [0] * N)
-last_us = array.array('i', [0] * N)
-low_secs = [0] * N
-led = Pin(25, Pin.OUT)      # onboard LED: on = something blocked
-
-pins = []
+ALL_RUN_PINS = [2, 3, 4, 5, 6, 7, 8, 9, 12]
+RUN_PINS = ALL_RUN_PINS[:NUM_RUNS]
+led = Pin(25, Pin.OUT)      # onboard LED
 
 
-def make_handler(i):
-    # Runs inside the interrupt: keep it tiny, no memory allocation.
-    def handler(pin):
-        t = time.ticks_us()
-        if time.ticks_diff(t, last_us[i]) >= LOCKOUT_US:
-            last_us[i] = t
-            counts[i] += 1
-    return handler
+def tune_mode():
+    # Run 1 raw signal on GP26 via JP1. Sample flat out for one second
+    # and print the biggest spike, so RV1 can be set below the seed hits
+    # but above the vibration noise. Measure VTH with a meter on the
+    # RV1 wiper (or LM339 pin 4) and compare.
+    adc = ADC(26)
+    print("TUNE MODE: run 1 raw signal on GP26 (JP1 fitted)")
+    print("Set VTH (RV1 wiper) between the 'noise' peak and the 'seed' peak.\n")
+    while True:
+        peak = 0
+        total = 0
+        n = 0
+        t0 = time.ticks_ms()
+        while time.ticks_diff(time.ticks_ms(), t0) < 1000:
+            v = adc.read_u16()
+            if v > peak:
+                peak = v
+            total += v
+            n += 1
+        peak_v = peak * 3.3 / 65535
+        avg_v = total / n * 3.3 / 65535
+        bar = "#" * int(peak_v * 20)
+        print("peak %.3f V  avg %.3f V  (%d samples)  %s" % (peak_v, avg_v, n, bar))
+        led.toggle()
 
 
-for i, gp in enumerate(RUN_PINS):
-    p = Pin(gp, Pin.IN, Pin.PULL_UP if USE_INTERNAL_PULLUP else None)
-    p.irq(trigger=Pin.IRQ_FALLING, handler=make_handler(i), hard=True)
-    pins.append(p)
+def count_mode():
+    n_runs = len(RUN_PINS)
+    counts = array.array('i', [0] * n_runs)
+    last_us = array.array('i', [0] * n_runs)
+    low_secs = [0] * n_runs
 
-print("Tower", TOWER_ID, "-", N, "runs on GP", RUN_PINS)
-print("Tap a hose / piezo and watch that run's count go up.\n")
+    def make_handler(i):
+        # Runs inside the interrupt: keep it tiny, no memory allocation.
+        def handler(pin):
+            t = time.ticks_us()
+            if time.ticks_diff(t, last_us[i]) >= LOCKOUT_US:
+                last_us[i] = t
+                counts[i] += 1
+        return handler
 
-last_report = time.ticks_ms()
-while True:
-    time.sleep_ms(10)
-    now = time.ticks_ms()
-    elapsed = time.ticks_diff(now, last_report)
-    if elapsed < REPORT_MS:
-        continue
-    last_report = now
+    pins = []
+    for i, gp in enumerate(RUN_PINS):
+        p = Pin(gp, Pin.IN)  # board has its own 10k pull-ups
+        p.irq(trigger=Pin.IRQ_RISING, handler=make_handler(i), hard=True)
+        pins.append(p)
 
-    # Grab and clear the counts without an interrupt sneaking in.
-    state = machine.disable_irq()
-    snap = list(counts)
-    for i in range(N):
-        counts[i] = 0
-    machine.enable_irq(state)
+    print("Tower", TOWER_ID, "-", n_runs, "runs on GP", RUN_PINS)
+    print("Tap a piezo and watch that run's count go up.")
+    print("A run stuck at a big number with nothing touching it = threshold too low.\n")
 
-    rates = [c * 1000 // elapsed for c in snap]
-    avg = sum(rates) / N if N else 0
-    running = avg >= MIN_TOWER_AVG
+    last_report = time.ticks_ms()
+    while True:
+        time.sleep_ms(10)
+        now = time.ticks_ms()
+        elapsed = time.ticks_diff(now, last_report)
+        if elapsed < REPORT_MS:
+            continue
+        last_report = now
 
-    blocked = []
-    for i in range(N):
-        if running and rates[i] * 100 < avg * BLOCK_PCT:
-            low_secs[i] += 1
-        else:
-            low_secs[i] = 0
-        if low_secs[i] >= BLOCK_SECONDS:
-            blocked.append(i + 1)
+        # Grab and clear the counts without an interrupt sneaking in.
+        state = machine.disable_irq()
+        snap = list(counts)
+        for i in range(n_runs):
+            counts[i] = 0
+        machine.enable_irq(state)
 
-    led.value(1 if blocked else 0)
+        rates = [c * 1000 // elapsed for c in snap]
+        avg = sum(rates) / n_runs
+        running = avg >= MIN_TOWER_AVG
 
-    line = "T%d " % TOWER_ID
-    line += " ".join("r%d:%4d" % (i + 1, r) for i, r in enumerate(rates))
-    line += "  avg:%5.0f" % avg
-    if not running:
-        line += "  (stopped)"
-    elif blocked:
-        line += "  BLOCKED: " + ",".join(str(r) for r in blocked)
-    print(line)
+        blocked = []
+        for i in range(n_runs):
+            if running and rates[i] * 100 < avg * BLOCK_PCT:
+                low_secs[i] += 1
+            else:
+                low_secs[i] = 0
+            if low_secs[i] >= BLOCK_SECONDS:
+                blocked.append(i + 1)
+
+        led.value(1 if blocked else 0)
+
+        line = "T%d " % TOWER_ID
+        line += " ".join("r%d:%4d" % (i + 1, r) for i, r in enumerate(rates))
+        line += "  avg:%5.0f" % avg
+        if not running:
+            line += "  (stopped)"
+        elif blocked:
+            line += "  BLOCKED: " + ",".join(str(r) for r in blocked)
+        print(line)
+
+
+if TUNE_MODE:
+    tune_mode()
+else:
+    count_mode()
