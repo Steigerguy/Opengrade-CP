@@ -40,6 +40,9 @@ struct Settings {
   uint16_t minAvg = 5;      // tower avg hits/s below this = tower not flowing
   bool always = false;      // monitor without AgOpenGPS section signal
   uint16_t ignore[SBM_MAX_TOWERS + 1] = {0};  // bit per run, per tower
+  // Map on the page: tower numbers left to right, rows split by '/',
+  // first row = front. 0 = empty spot.
+  String layout = "1,2,3,4/5,6,7,8";
 } cfg;
 Preferences prefs;
 
@@ -88,6 +91,7 @@ void loadSettings() {
   cfg.minAvg = prefs.getUShort("min", cfg.minAvg);
   cfg.always = prefs.getBool("always", cfg.always);
   prefs.getBytes("ignore", cfg.ignore, sizeof(cfg.ignore));
+  cfg.layout = prefs.getString("layout", cfg.layout);
   prefs.end();
   if (cfg.towers < 1 || cfg.towers > SBM_MAX_TOWERS) cfg.towers = 8;
 }
@@ -102,6 +106,7 @@ void saveSettings() {
   prefs.putUShort("min", cfg.minAvg);
   prefs.putBool("always", cfg.always);
   prefs.putBytes("ignore", cfg.ignore, sizeof(cfg.ignore));
+  prefs.putString("layout", cfg.layout);
   prefs.end();
 }
 
@@ -272,6 +277,7 @@ void handleData() {
   j += ",\"delay\":"; j += cfg.startDelay;
   j += ",\"min\":"; j += cfg.minAvg;
   j += ",\"always\":"; j += cfg.always ? 1 : 0;
+  j += ",\"layout\":\""; j += cfg.layout; j += '"';
   j += "}}";
   server.send(200, "application/json", j);
 }
@@ -290,6 +296,15 @@ void handleSet() {
   cfg.startDelay = argOr("delay", cfg.startDelay, 0, 60);
   cfg.minAvg = argOr("min", cfg.minAvg, 0, 10000);
   cfg.always = argOr("always", cfg.always, 0, 1);
+  if (server.hasArg("layout")) {
+    // keep only digits, commas and slashes (it goes back out in JSON)
+    String in = server.arg("layout"), out;
+    for (size_t i = 0; i < in.length() && out.length() < 60; i++) {
+      char c = in[i];
+      if ((c >= '0' && c <= '9') || c == ',' || c == '/') out += c;
+    }
+    if (out.length()) cfg.layout = out;
+  }
   saveSettings();
   server.send(200, "text/plain", "ok");
 }

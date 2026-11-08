@@ -94,6 +94,10 @@ Fit 120 Ω termination **only at the cab unit and the last tower**.
 - Each run is compared to **its own tower's average**. Below **25 %** for **3 s** = **BLOCKED** (red, buzzer). Below 60 % = low (yellow, no alarm).
 - If a whole tower's average drops below **min avg** while monitoring (primary hose plugged), all its runs go red.
 - A tower that stops sending for 3 s shows **NO SIGNAL** and alarms while monitoring.
+- **Machine map** at the top shows the towers where they sit on the seeder. Each tower is drawn like its outlet head:
+  a ring of run segments, with run 1 at the top (front) going clockwise. Blocked runs go red and the tower centre flashes.
+  Tap a tower to jump to its flow bars. Set the layout in Settings, e.g. `1,2,3,4/5,6,7,8`
+  (tower numbers left to right, `/` starts the next row back, first row = front, `0` = empty spot).
 - **Tap a run's bar** to ignore it (e.g. a broken sensor). Ignores are saved.
 - **Mute** silences the buzzer for 2 minutes.
 - All thresholds are in **Settings** at the bottom of the page.

@@ -20,7 +20,18 @@ button.on{background:var(--ok);border-color:var(--ok)}
 #banner{display:none;padding:14px;font-size:22px;font-weight:800;text-align:center;background:var(--bad);color:#fff}
 #banner.show{display:block;animation:fl 1s steps(2) infinite}
 @keyframes fl{50%{background:#8f1512}}
-#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}
+.mapwrap{padding:12px 12px 0}
+#map{width:100%;max-height:46vh;display:block;background:var(--card);border:1px solid var(--line);border-radius:10px}
+#map .twr{cursor:pointer}
+#map .bar{stroke:#5a6573;stroke-width:6;stroke-linecap:round}
+#map text{fill:var(--text);font-weight:700;text-anchor:middle;dominant-baseline:central}
+#map .sub{fill:var(--dim);font-size:11px;font-weight:500}
+#map .front{fill:var(--dim);font-size:13px;text-anchor:start}
+#map .hub{fill:#0c0f12;stroke:var(--line);stroke-width:2}
+#map .hub.alarm{fill:#5a1210;stroke:var(--bad);stroke-width:3;animation:fl 1s steps(2) infinite}
+#map .hub.dead{stroke:var(--bad);stroke-dasharray:5 4}
+.tw.flash{outline:3px solid #fff}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:12px}
 .tw{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px}
 .tw.off{opacity:.55;border-color:var(--bad)}
 .th{display:flex;justify-content:space-between;font-weight:700;margin-bottom:6px}
@@ -51,6 +62,7 @@ summary{font-weight:700;cursor:pointer}
   <button id="mute">Mute 2 min</button>
 </header>
 <div id="banner"></div>
+<div class="mapwrap"><svg id="map" xmlns="http://www.w3.org/2000/svg"></svg></div>
 <div id="grid"><div class="msg">Waiting for cab unit...</div></div>
 <details><summary>Settings</summary>
 <div class="set">
@@ -60,6 +72,7 @@ summary{font-weight:700;cursor:pointer}
  <label>Seconds low before alarm <input id="secs" type="number" min="1" max="60"></label>
  <label>Start delay after section on (s) <input id="delay" type="number" min="0" max="60"></label>
  <label>Tower min avg hits/s <input id="min" type="number" min="0" max="10000"></label>
+ <label>Map layout <input id="layout" type="text" style="width:150px" placeholder="1,2,3,4/5,6,7,8"></label>
  <label>Monitor without AgOpenGPS <input id="always" type="checkbox" style="width:auto"></label>
 </div>
 <p><button id="save">Save settings</button></p>
@@ -76,8 +89,31 @@ $('snd').onclick=()=>{ if(!ac) ac=new (window.AudioContext||window.webkitAudioCo
   ac.resume(); soundOn=!soundOn; $('snd').textContent=soundOn?'Sound on':'Sound off'; $('snd').classList.toggle('on',soundOn); };
 $('mute').onclick=()=>fetch('/mute?s='+(mute?0:120));
 $('save').onclick=()=>{ const q=['towers','block','warn','secs','delay','min'].map(k=>k+'='+$(k).value);
-  q.push('always='+($('always').checked?1:0)); fetch('/set?'+q.join('&')).then(()=>{cfgLoaded=false;}); };
+  q.push('always='+($('always').checked?1:0)); q.push('layout='+encodeURIComponent($('layout').value)); fetch('/set?'+q.join('&')).then(()=>{cfgLoaded=false;}); };
 function ignore(t,r){ if(confirm('Toggle ignore for tower '+t+' run '+r+'?')) fetch('/ignore?t='+t+'&r='+r); }
+const SC=['#2fb35a','#e0a400','#e5322d','#555','#3d4651'];
+function wedge(cx,cy,r0,r1,a0,a1){const p=(r,a)=>(cx+r*Math.cos(a)).toFixed(1)+' '+(cy+r*Math.sin(a)).toFixed(1);
+  return 'M'+p(r1,a0)+'A'+r1+' '+r1+' 0 0 1 '+p(r1,a1)+'L'+p(r0,a1)+'A'+r0+' '+r0+' 0 0 0 '+p(r0,a0)+'Z';}
+function showTower(id){const el=$('tw'+id); if(!el) return; el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1500);}
+function drawMap(d){
+  const rows=(d.cfg.layout||'1,2,3,4/5,6,7,8').split('/').map(r=>r.split(',').map(x=>parseInt(x)||0));
+  const cols=Math.max(...rows.map(r=>r.length)), DX=130, DY=130, W=cols*DX+40, H=rows.length*DY+30;
+  const byId={}; d.t.forEach(t=>byId[t.id]=t);
+  let g='<text class="front" x="12" y="14">FRONT</text>';
+  rows.forEach((row,ri)=>{ const y=40+ri*DY+DY/2-10, x0=20+DX/2, x1=20+(row.length-0.5)*DX;
+    g+='<line class="bar" x1="'+(x0-50)+'" y1="'+y+'" x2="'+(x1+50)+'" y2="'+y+'"/>';
+    row.forEach((id,ci)=>{ const t=byId[id]; if(!t) return; const cx=20+DX/2+ci*DX, n=t.r.length;
+      const blocked=t.s.filter(s=>s==2).length, dead=!t.on;
+      g+='<g class="twr" onclick="showTower('+id+')">';
+      for(let i=0;i<n;i++){ const a0=-Math.PI/2+(i/n)*2*Math.PI+0.05, a1=-Math.PI/2+((i+1)/n)*2*Math.PI-0.05;
+        g+='<path d="'+wedge(cx,y,38,54,a0,a1)+'" fill="'+(dead?'#2a2f36':SC[t.s[i]]??SC[4])+'"><title>Tower '+id+' run '+(i+1)+': '+t.r[i]+'/s</title></path>'; }
+      g+='<circle class="hub'+(blocked&&d.act?' alarm':'')+(dead?' dead':'')+'" cx="'+cx+'" cy="'+y+'" r="34"/>';
+      g+='<text x="'+cx+'" y="'+(y-7)+'" style="font-size:22px">'+id+'</text>';
+      g+='<text class="sub" x="'+cx+'" y="'+(y+14)+'">'+(dead?'NO SIG':(blocked&&d.act?'BLOCKED':t.avg+'/s'))+'</text></g>'; });
+  });
+  const m=$('map'); m.setAttribute('viewBox','0 0 '+W+' '+H); m.innerHTML=g;
+}
 function render(d){
   alarm=!!d.alarm; mute=d.mute;
   const st=$('st');
@@ -95,7 +131,7 @@ function render(d){
   let h='';
   for(const t of d.t){
     if(!t.on) off.push(t.id);
-    h+='<div class="tw'+(t.on?'':' off')+'"><div class="th"><span>Tower '+t.id+'</span><small>'+
+    h+='<div id="tw'+t.id+'" class="tw'+(t.on?'':' off')+'"><div class="th"><span>Tower '+t.id+'</span><small>'+
        (t.on?(t.tune?'TUNE MODE':'avg '+t.avg+'/s'):'NO SIGNAL')+'</small></div><div class="bars">';
     t.r.forEach((v,i)=>{ const s=t.s[i], pct=t.avg?Math.round(v*100/t.avg):0;
       if(s==2) bad.push('T'+t.id+' R'+(i+1));
@@ -110,7 +146,8 @@ function render(d){
   if(d.act&&off.length) parts.push('NO SIGNAL: tower '+off.join(', '));
   b.textContent=parts.join('  |  '); b.classList.toggle('show',parts.length>0);
   if(!cfgLoaded){ for(const k of ['towers','block','warn','secs','delay','min']) $(k).value=d.cfg[k];
-    $('always').checked=!!d.cfg.always; cfgLoaded=true; }
+    $('always').checked=!!d.cfg.always; $('layout').value=d.cfg.layout||''; cfgLoaded=true; }
+  drawMap(d);
 }
 function poll(){ fetch('/data',{cache:'no-store'}).then(r=>r.json()).then(d=>{last=Date.now();render(d);})
   .catch(()=>{}).finally(()=>setTimeout(poll,500)); }
