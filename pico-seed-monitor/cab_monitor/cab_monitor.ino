@@ -10,8 +10,13 @@
 //   Board package: "esp32" by Espressif, version 3.x
 //   Board: "OLIMEX ESP32-PoE"
 //   No extra libraries needed.
+//
+// Second screen (optional): the unit also makes its own Wi-Fi network.
+//   Join "SeedMonitor" (password seeder123) and open http://192.168.4.1
+//   Name/password/on-off are in Settings on the page.
 
 #include <ETH.h>
+#include <WiFi.h>
 #include <AsyncUDP.h>
 #include <WebServer.h>
 #include <Preferences.h>
@@ -44,7 +49,11 @@ struct Settings {
   // first row = front. 0 = empty spot.
   String layout = "1,2,3,4/5,6,7,8";
   uint8_t rowOff = 0;       // bit per layout row (bit 0 = front rank) switched off
+  bool wifiOn = true;       // Wi-Fi access point for a second screen
+  String ssid = "SeedMonitor";
+  String wifiPass = "seeder123";   // 8+ characters
 } cfg;
+uint32_t wifiRestartAtMs = 0;    // apply Wi-Fi changes shortly after saving
 int8_t towerRowOf[SBM_MAX_TOWERS + 1];  // layout row of each tower, -1 = not on map
 Preferences prefs;
 
@@ -95,6 +104,9 @@ void loadSettings() {
   prefs.getBytes("ignore", cfg.ignore, sizeof(cfg.ignore));
   cfg.layout = prefs.getString("layout", cfg.layout);
   cfg.rowOff = prefs.getUChar("rowoff", 0);
+  cfg.wifiOn = prefs.getBool("wifi", cfg.wifiOn);
+  cfg.ssid = prefs.getString("ssid", cfg.ssid);
+  cfg.wifiPass = prefs.getString("wpass", cfg.wifiPass);
   prefs.end();
   if (cfg.towers < 1 || cfg.towers > SBM_MAX_TOWERS) cfg.towers = 8;
 }
@@ -111,7 +123,36 @@ void saveSettings() {
   prefs.putBytes("ignore", cfg.ignore, sizeof(cfg.ignore));
   prefs.putString("layout", cfg.layout);
   prefs.putUChar("rowoff", cfg.rowOff);
+  prefs.putBool("wifi", cfg.wifiOn);
+  prefs.putString("ssid", cfg.ssid);
+  prefs.putString("wpass", cfg.wifiPass);
   prefs.end();
+}
+
+// ======================================================================
+//  Wi-Fi access point (second screen)
+// ======================================================================
+void startWifi() {
+  if (cfg.wifiOn) {
+    WiFi.mode(WIFI_AP);
+    bool ok = WiFi.softAP(cfg.ssid.c_str(), cfg.wifiPass.c_str());
+    Serial.printf("Wi-Fi \"%s\" %s at http://%s\n", cfg.ssid.c_str(), ok ? "up" : "FAILED",
+                  WiFi.softAPIP().toString().c_str());
+  } else {
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_OFF);
+    Serial.println("Wi-Fi off");
+  }
+}
+
+// Printable characters only, no quotes or backslashes (it goes out in JSON).
+String cleanText(const String &in, size_t maxLen) {
+  String out;
+  for (size_t i = 0; i < in.length() && out.length() < maxLen; i++) {
+    char c = in[i];
+    if (c >= 0x20 && c <= 0x7E && c != '"' && c != '\\') out += c;
+  }
+  return out;
 }
 
 // Work out which layout row (rank) each tower is in, e.g. "1,2,3,4/5,6,7,8".
@@ -304,6 +345,8 @@ void handleData() {
   j += ",\"always\":"; j += cfg.always ? 1 : 0;
   j += ",\"layout\":\""; j += cfg.layout; j += '"';
   j += ",\"rowoff\":"; j += cfg.rowOff;
+  j += ",\"wifi\":"; j += cfg.wifiOn ? 1 : 0;
+  j += ",\"ssid\":\""; j += cfg.ssid; j += '"';
   j += "}}";
   server.send(200, "application/json", j);
 }
@@ -331,8 +374,21 @@ void handleSet() {
     }
     if (out.length()) cfg.layout = out;
   }
+  bool wifiWas = cfg.wifiOn;
+  String ssidWas = cfg.ssid, passWas = cfg.wifiPass;
+  cfg.wifiOn = argOr("wifi", cfg.wifiOn, 0, 1);
+  if (server.hasArg("ssid")) {
+    String v = cleanText(server.arg("ssid"), 31);
+    if (v.length()) cfg.ssid = v;
+  }
+  if (server.hasArg("pass")) {
+    String v = cleanText(server.arg("pass"), 63);
+    if (v.length() >= 8) cfg.wifiPass = v;   // shorter = keep the old one
+  }
   saveSettings();
   parseLayout();
+  if (cfg.wifiOn != wifiWas || cfg.ssid != ssidWas || cfg.wifiPass != passWas)
+    wifiRestartAtMs = millis() + 1000;   // after this reply has gone out
   server.send(200, "text/plain", "ok");
 }
 
@@ -386,6 +442,7 @@ void setup() {
   }
 
   canBegin();
+  startWifi();
 
   server.on("/", handleRoot);
   server.on("/data", handleData);
@@ -411,4 +468,9 @@ void loop() {
     evaluate();
   }
   driveBuzzer();
+
+  if (wifiRestartAtMs && (int32_t)(millis() - wifiRestartAtMs) >= 0) {
+    wifiRestartAtMs = 0;
+    startWifi();
+  }
 }

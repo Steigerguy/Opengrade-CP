@@ -88,6 +88,13 @@ Fit 120 Ω termination **only at the cab unit and the last tower**.
 3. On the tablet, open **http://192.168.5.140** in a browser and put it beside AgOpenGPS.
    Tap **Sound on** once so the tablet can beep too.
 
+**Second screen over Wi-Fi (optional)**
+- The cab unit also makes its own Wi-Fi network: **SeedMonitor**, password **seeder123**.
+  Change the name and password, or turn Wi-Fi off, in Settings.
+- On an Android tablet, join that network and open **http://192.168.4.1**. Tap **"Stay connected"** if Android warns there's no internet.
+- Use a kiosk browser (e.g. Fully Kiosk Browser) so the screen stays on and the page opens at startup.
+- The AgOpenGPS tablet can still use http://192.168.5.140 over Ethernet at the same time.
+
 **How it decides**
 - **Monitoring** = AgOpenGPS section 1 is on. The unit hears this from AgIO's broadcasts on UDP 8888, so nothing needs changing in AgOpenGPS.
   After the section turns on, it waits the **start delay** (5 s) before checking. It stops instantly when the section goes off.

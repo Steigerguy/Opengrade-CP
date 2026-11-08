@@ -78,9 +78,13 @@ summary{font-weight:700;cursor:pointer}
  <label>Start delay after section on (s) <input id="delay" type="number" min="0" max="60"></label>
  <label>Tower min avg hits/s <input id="min" type="number" min="0" max="10000"></label>
  <label>Map layout <input id="layout" type="text" style="width:150px" placeholder="1,2,3,4/5,6,7,8"></label>
+ <label>Wi-Fi for 2nd screen <input id="wifi" type="checkbox" style="width:auto"></label>
+ <label>Wi-Fi name <input id="ssid" type="text" maxlength="31" style="width:150px"></label>
+ <label>Wi-Fi password <input id="pass" type="text" maxlength="63" style="width:150px" placeholder="unchanged (8+ chars)"></label>
  <label>Monitor without AgOpenGPS <input id="always" type="checkbox" style="width:auto"></label>
 </div>
 <p><button id="save">Save settings</button></p>
+<p class="note" id="wnote"></p>
 <p class="note">Tap a run's bar to ignore it (striped) or bring it back, e.g. for a broken sensor.
 Monitoring follows AgOpenGPS section 1: it starts after the delay when the section turns on and stops when it turns off.</p>
 </details>
@@ -94,7 +98,10 @@ $('snd').onclick=()=>{ if(!ac) ac=new (window.AudioContext||window.webkitAudioCo
   ac.resume(); soundOn=!soundOn; $('snd').textContent=soundOn?'Sound on':'Sound off'; $('snd').classList.toggle('on',soundOn); };
 $('mute').onclick=()=>fetch('/mute?s='+(mute?0:120));
 $('save').onclick=()=>{ const q=['towers','block','warn','secs','delay','min'].map(k=>k+'='+$(k).value);
-  q.push('always='+($('always').checked?1:0)); q.push('layout='+encodeURIComponent($('layout').value)); fetch('/set?'+q.join('&')).then(()=>{cfgLoaded=false;}); };
+  q.push('always='+($('always').checked?1:0)); q.push('layout='+encodeURIComponent($('layout').value));
+  q.push('wifi='+($('wifi').checked?1:0)); q.push('ssid='+encodeURIComponent($('ssid').value));
+  const pw=$('pass').value; if(pw){ if(pw.length<8){alert('Wi-Fi password needs 8+ characters');return;} q.push('pass='+encodeURIComponent(pw)); }
+  $('pass').value=''; fetch('/set?'+q.join('&')).then(()=>{cfgLoaded=false;}); };
 function ignore(t,r){ if(confirm('Toggle ignore for tower '+t+' run '+r+'?')) fetch('/ignore?t='+t+'&r='+r); }
 const SC=['#2fb35a','#e0a400','#e5322d','#555','#3d4651'];
 function wedge(cx,cy,r0,r1,a0,a1){const p=(r,a)=>(cx+r*Math.cos(a)).toFixed(1)+' '+(cy+r*Math.sin(a)).toFixed(1);
@@ -157,7 +164,8 @@ function render(d){
   if(d.act&&off.length) parts.push('NO SIGNAL: tower '+off.join(', '));
   b.textContent=parts.join('  |  '); b.classList.toggle('show',parts.length>0);
   if(!cfgLoaded){ for(const k of ['towers','block','warn','secs','delay','min']) $(k).value=d.cfg[k];
-    $('always').checked=!!d.cfg.always; $('layout').value=d.cfg.layout||''; cfgLoaded=true; }
+    $('always').checked=!!d.cfg.always; $('layout').value=d.cfg.layout||''; $('wifi').checked=!!d.cfg.wifi; $('ssid').value=d.cfg.ssid||'';
+    $('wnote').textContent=d.cfg.wifi?('Second screen: join Wi-Fi "'+d.cfg.ssid+'" and open http://192.168.4.1'):'Wi-Fi is off.'; cfgLoaded=true; }
   drawMap(d);
 }
 function poll(){ fetch('/data',{cache:'no-store'}).then(r=>r.json()).then(d=>{last=Date.now();render(d);})
