@@ -18,6 +18,12 @@
 //   stats       -> CAN statistics
 //   help
 
+// This needs Earle Philhower's Pico core. The official "Arduino Mbed OS RP2040"
+// board package has no EEPROM.h and won't run can2040.
+#if defined(ARDUINO_ARCH_MBED)
+#error "Wrong board package. Tools > Board > Raspberry Pi Pico/RP2040 (Earle Philhower) > Raspberry Pi Pico. Not 'Arduino Mbed OS RP2040'."
+#endif
+
 #include <ACAN2040.h>
 #include <EEPROM.h>
 #include "protocol.h"
